@@ -5,8 +5,8 @@
 //
 .const COLOR_RAM = $ff80000
 
-.const SCREEN_WIDTH = 41
-.const SCREEN_HEIGHT = 26
+.const SCREEN_WIDTH = 40
+.const SCREEN_HEIGHT = 25
 .const NUM_SCREENS_WIDE = 2
 .const NUM_SCREENS_HIGH = 2
 
@@ -57,11 +57,8 @@ Entry: {
 	lda #$80			//Clear bit7=H640
 	trb $d031
 
-	// lda #$08			//Set bit3=V400
-	// tsb $d031
-
-	VIC4_SetNumCharacters(SCREEN_WIDTH)
-	VIC4_SetNumRows(SCREEN_HEIGHT)
+	VIC4_SetNumCharacters(SCREEN_WIDTH+1)
+	VIC4_SetNumRows(SCREEN_HEIGHT+1)
 
 	VIC4_SetRowWidth(LOGICAL_ROW_SIZE)
 
@@ -84,14 +81,18 @@ Entry: {
 	ldx #$00
 !oloop:
 
+	txa
+	tay
+
 	ldz #$00
 !iloop:
-	tza
+	tya
 	sta (ChrPtr),z
 
-	lda #$04
+	and #$07
 	sta ((ColPtr)),z
 
+	iny
 	inz
 	cpz #LOGICAL_ROW_SIZE
 	bne !iloop-
@@ -111,12 +112,6 @@ Entry: {
 	lda ColPtr+1
 	adc #0
 	sta ColPtr+1
-	lda ColPtr+2
-	adc #0
-	sta ColPtr+2
-	lda ColPtr+3
-	adc #0
-	sta ColPtr+3
 
 	inx
 	cpx #LOGICAL_NUM_ROWS
@@ -143,7 +138,7 @@ mainloop:
 	sta shiftUp
 
 	sec
-	lda #$37
+	lda #$68
 	sbc shiftUp:#$00
 	sta $d04e
 	lda #$00
@@ -156,7 +151,7 @@ mainloop:
 	sta shiftLeft
 
 	sec
-	lda #$4e
+	lda #$50
 	sbc shiftLeft:#$00
 	sta $d04c
 	lda #$00
