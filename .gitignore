@@ -5,3 +5,5 @@ bin/h640test_BuildLog.txt
 bin/main.prg
 Mega65Tut.d81
 RC65Tut.d81
+bin/tutorial_1.vs
+bin/tutorial_1_BuildLog.txt
