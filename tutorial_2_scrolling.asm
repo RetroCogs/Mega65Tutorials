@@ -1,3 +1,11 @@
+// ------------------------------------------------------------
+//
+// Tutorial 2 - 4 way scrolling by changing screen ptr location.
+//
+// Shows how to scroll the screen in both directions by modifying the TextXPos 
+// and TextYPos and then calculating the address of the screen to set into
+// ScreenPtr and ColorPtr
+//
 .cpu _45gs02				
 
 // ------------------------------------------------------------
@@ -5,14 +13,14 @@
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
 #define H320
-.const SCREEN_WIDTH = 320
+.const SCREEN_WIDTH = 360
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240, otherwise <= 480
 #define V200
-.const SCREEN_HEIGHT = 200
+.const SCREEN_HEIGHT = 240
 
 // Choose IS_NTSC if you are running in NTSC 60hz mode
-#define IS_NTSC
+//#define IS_NTSC
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"

@@ -1,3 +1,11 @@
+// ------------------------------------------------------------
+//
+// Tutorial 1 - Setting up the screen.
+//
+// Shows how to setup both H640&320 horizontal and V400&200 vertically,
+// the screen will be centered horizontally and vertically, also handles
+// PAL and NTSC.
+//
 .cpu _45gs02				
 
 // ------------------------------------------------------------
@@ -12,7 +20,7 @@
 .const SCREEN_HEIGHT = 200
 
 // Choose IS_NTSC if you are running in NTSC 60hz mode
-#define IS_NTSC
+//#define IS_NTSC
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
