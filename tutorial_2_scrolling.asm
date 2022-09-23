@@ -25,6 +25,9 @@
 // ------------------------------------------------------------
 #import "mega65macros.asm"
 
+.if ((TOP_BORDER - VSCROLLAMOUNT) <= 0) .error "Vertical height too much, max value = 224"
+.if ((LEFT_BORDER - HSCROLLAMOUNT) <= 0) .error "Horizontal width too much, max value = 360"
+
 // Figure out how many characters wide and high the visible area is
 //
 .const CHARS_WIDE = (SCREEN_WIDTH / 8)
@@ -142,11 +145,12 @@ Entry: {
 
 	// Main loop
 mainloop:
-	// Wait for (H400) rasterline $07
+	// Wait for (H400) rasterline BOT_BORDER
 !:	lda $d053
 	and #$07
+	cmp #>(BOTTOM_BORDER - 32)
 	bne !-
-    lda #$04
+    lda #<(BOTTOM_BORDER - 32)
 	cmp $d052 
     bne !-
 !:	cmp $d052 
@@ -161,6 +165,9 @@ mainloop:
 	sta XPos+0
 	lda costable,x
 	sta YPos+0
+
+	// inc XPos+0
+	// inc YPos+0
 
 	// lda #$00
 	// sta XPos+0

@@ -24,6 +24,9 @@
 .const VPIXELSCALE = 1
 #endif
 
+.const HSCROLLAMOUNT = 8 * HPIXELSCALE
+.const VSCROLLAMOUNT = 8 * VPIXELSCALE
+
 // Calculate Left, Top and Bottom border sizes based on visble screen area and
 // horizontal and vertial centers
 //
@@ -96,6 +99,15 @@ end:
 	sta $d062
 	lda #[[[addr & $ff0000]>>24] & $0f]
 	sta $d063
+}
+
+.macro VIC4_SetCharPtr(addr) {
+	lda #[addr & $ff]
+	sta $d068
+	lda #[[addr & $ff00]>>8]
+	sta $d069
+	lda #[[addr & $ff0000]>>16]
+	sta $d06a
 }
 
 .macro VIC4_SetLogicalRowSize(rowWidth) {
