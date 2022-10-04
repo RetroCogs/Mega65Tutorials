@@ -13,7 +13,7 @@
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
 #define H320
-.const SCREEN_WIDTH = 360
+.const SCREEN_WIDTH = 320
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240, otherwise <= 480
 #define V200
@@ -24,9 +24,6 @@
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
-
-.if ((TOP_BORDER - VSCROLLAMOUNT) <= 0) .error "Vertical height too much, max value = 224"
-.if ((LEFT_BORDER - HSCROLLAMOUNT) <= 0) .error "Horizontal width too much, max value = 360"
 
 // Figure out how many characters wide and high the visible area is
 //
@@ -148,9 +145,9 @@ mainloop:
 	// Wait for (H400) rasterline BOT_BORDER
 !:	lda $d053
 	and #$07
-	cmp #>(BOTTOM_BORDER - 32)
+	cmp #>(BOTTOM_BORDER)
 	bne !-
-    lda #<(BOTTOM_BORDER - 32)
+    lda #<(BOTTOM_BORDER)
 	cmp $d052 
     bne !-
 !:	cmp $d052 

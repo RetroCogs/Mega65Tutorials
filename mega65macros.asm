@@ -34,6 +34,15 @@
 .const TOP_BORDER = (VERTICAL_CENTER - ((SCREEN_HEIGHT * VPIXELSCALE) / 2))
 .const BOTTOM_BORDER = (VERTICAL_CENTER + ((SCREEN_HEIGHT * VPIXELSCALE) / 2))
 
+.const MAX_WIDTH = HORIZONTAL_CENTER - HSCROLLAMOUNT
+.print "MAX_WIDTH = " + MAX_WIDTH
+
+.const MAX_HEIGHT = VERTICAL_CENTER - VSCROLLAMOUNT
+.print "MAX_HEIGHT = " + MAX_HEIGHT
+
+.if ((TOP_BORDER - VSCROLLAMOUNT) < 0) .error "Vertical height too much, max value = " + MAX_HEIGHT
+.if ((LEFT_BORDER - HSCROLLAMOUNT) < 0) .error "Horizontal width too much, max value = " + MAX_WIDTH
+
 // ------------------------------------------------------------
 //
 .macro BasicUpstart65(addr) {
