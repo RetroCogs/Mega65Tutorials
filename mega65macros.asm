@@ -24,12 +24,24 @@
 .const VPIXELSCALE = 1
 #endif
 
+.const HSCROLLAMOUNT = 8 * HPIXELSCALE
+.const VSCROLLAMOUNT = 8 * VPIXELSCALE
+
 // Calculate Left, Top and Bottom border sizes based on visble screen area and
 // horizontal and vertial centers
 //
 .const LEFT_BORDER = (HORIZONTAL_CENTER - ((SCREEN_WIDTH * HPIXELSCALE) / 2))
 .const TOP_BORDER = (VERTICAL_CENTER - ((SCREEN_HEIGHT * VPIXELSCALE) / 2))
 .const BOTTOM_BORDER = (VERTICAL_CENTER + ((SCREEN_HEIGHT * VPIXELSCALE) / 2))
+
+.const MAX_WIDTH = HORIZONTAL_CENTER - HSCROLLAMOUNT
+.print "MAX_WIDTH = " + MAX_WIDTH
+
+.const MAX_HEIGHT = VERTICAL_CENTER - VSCROLLAMOUNT
+.print "MAX_HEIGHT = " + MAX_HEIGHT
+
+.if ((TOP_BORDER - VSCROLLAMOUNT) < 0) .error "Vertical height too much, max value = " + MAX_HEIGHT
+.if ((LEFT_BORDER - HSCROLLAMOUNT) < 0) .error "Horizontal width too much, max value = " + MAX_WIDTH
 
 // ------------------------------------------------------------
 //
@@ -96,6 +108,15 @@ end:
 	sta $d062
 	lda #[[[addr & $ff0000]>>24] & $0f]
 	sta $d063
+}
+
+.macro VIC4_SetCharPtr(addr) {
+	lda #[addr & $ff]
+	sta $d068
+	lda #[[addr & $ff00]>>8]
+	sta $d069
+	lda #[[addr & $ff0000]>>16]
+	sta $d06a
 }
 
 .macro VIC4_SetLogicalRowSize(rowWidth) {

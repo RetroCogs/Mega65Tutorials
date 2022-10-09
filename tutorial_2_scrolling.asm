@@ -13,7 +13,7 @@
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
 #define H320
-.const SCREEN_WIDTH = 360
+.const SCREEN_WIDTH = 320
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240, otherwise <= 480
 #define V200
@@ -142,11 +142,12 @@ Entry: {
 
 	// Main loop
 mainloop:
-	// Wait for (H400) rasterline $07
+	// Wait for (H400) rasterline BOT_BORDER
 !:	lda $d053
 	and #$07
+	cmp #>(BOTTOM_BORDER)
 	bne !-
-    lda #$04
+    lda #<(BOTTOM_BORDER)
 	cmp $d052 
     bne !-
 !:	cmp $d052 
@@ -161,6 +162,9 @@ mainloop:
 	sta XPos+0
 	lda costable,x
 	sta YPos+0
+
+	// inc XPos+0
+	// inc YPos+0
 
 	// lda #$00
 	// sta XPos+0
