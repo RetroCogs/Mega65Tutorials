@@ -140,3 +140,104 @@ end:
 	sta $d07b 
 }
 
+.macro RunDMAJob(JobPointer) {
+		lda #[JobPointer >> 16]
+		sta $d702
+		sta $d704
+		lda #>JobPointer
+		sta $d701
+		lda #<JobPointer
+		sta $d705
+}
+.macro DMAHeader(SourceBank, DestBank) {
+		.byte $0A // Request format is F018A
+		.byte $80, SourceBank
+		.byte $81, DestBank
+}
+.macro DMAStep(SourceStep, SourceStepFractional, DestStep, DestStepFractional) {
+		.byte $82, SourceStepFractional
+		.byte $83, SourceStep
+		.byte $84, DestStepFractional
+		.byte $85, DestStep		
+}
+.macro DMADisableTransparency() {
+		.byte $06
+}
+.macro DMAEnableTransparency(TransparentByte) {
+		.byte $07 
+		.byte $86, TransparentByte
+}
+.macro DMACopyJob(Source, Destination, Length, Chain, Backwards) {
+	.byte $00 //No more options
+	.if(Chain) {
+		.byte $04 //Copy and chain
+	} else {
+		.byte $00 //Copy and last request
+	}	
+	
+	.var backByte = 0
+	.if(Backwards) {
+		.eval backByte = $40
+		.eval Source = Source + Length - 1
+		.eval Destination = Destination + Length - 1
+	}
+	.word Length //Size of Copy
+
+	//byte 04
+	.word Source & $ffff
+	.byte [Source >> 16] + backByte
+
+	//byte 07
+	.word Destination & $ffff
+	.byte [[Destination >> 16] & $0f]  + backByte
+	.if(Chain) {
+		.word $0000
+	}
+}
+
+
+.macro DMAFillJob(SourceByte, Destination, Length, Chain) {
+	.byte $00 //No more options
+	.if(Chain) {
+		.byte $07 //Fill and chain
+	} else {
+		.byte $03 //Fill and last request
+	}	
+	
+	.word Length //Size of Copy
+	//byte 4
+	.word SourceByte
+	.byte $00
+	//byte 7
+	.word Destination & $ffff
+	.byte [[Destination >> 16] & $0f] 
+	.if(Chain) {
+		.word $0000
+	}
+}
+
+
+.macro DMAMixJob(Source, Destination, Length, Chain, Backwards) {
+	.byte $00 //No more options
+	.if(Chain) {
+		.byte $04 //Mix and chain
+	} else {
+		.byte $00 //Mix and last request
+	}	
+	
+	.var backByte = 0
+	.if(Backwards) {
+		.eval backByte = $40
+		.eval Source = Source + Length - 1
+		.eval Destination = Destination + Length - 1
+	}
+	.word Length //Size of Copy
+	.word Source & $ffff
+	.byte [Source >> 16] + backByte
+	.word Destination & $ffff
+	.byte [[Destination >> 16] & $0f]  + backByte
+	.if(Chain) {
+		.word $0000
+	}
+}
+

@@ -12,3 +12,7 @@ bin/tutorial_1_screens_BuildLog.txt
 bin/tutorial_2_scrolling.vs
 bin/tutorial_2_scrolling_BuildLog.txt
 bin/tutorial_2_scrolling.prg
+bin/tutorial_4_rrbScroll.prg
+bin/tutorial_4_rrbScroll.sym
+bin/tutorial_4_rrbScroll.vs
+bin/tutorial_4_rrbScroll_BuildLog.txt
