@@ -16,3 +16,6 @@ bin/tutorial_4_rrbScroll.prg
 bin/tutorial_4_rrbScroll.sym
 bin/tutorial_4_rrbScroll.vs
 bin/tutorial_4_rrbScroll_BuildLog.txt
+bin/tutorial_4_ncm_BuildLog.txt
+bin/tutorial_4_ncm.vs
+bin/tutorial_4_ncm.prg
