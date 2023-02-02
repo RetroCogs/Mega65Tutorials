@@ -12,15 +12,15 @@
 // Defines to describe the screen size
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
-#define H320
-.const SCREEN_WIDTH = 320
+//#define H320
+.const SCREEN_WIDTH = 640
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240, otherwise <= 480
-#define V200
-.const SCREEN_HEIGHT = 200
+//#define V200
+.const SCREEN_HEIGHT = 400
 
 // Choose IS_NTSC if you are running in NTSC 60hz mode
-//#define IS_NTSC
+#define IS_NTSC
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
@@ -139,7 +139,7 @@ Entry: {
 	VIC4_SetNumCharacters(CHARS_WIDE)
 	VIC4_SetNumRows(CHARS_HIGH)
 
-	VIC4_SetLogicalRowSize(LOGICAL_ROW_SIZE)
+	VIC4_SetRowWidth(LOGICAL_ROW_SIZE)
 
 	VIC4_SetScreenPtr(SCREEN_BASE)
 
