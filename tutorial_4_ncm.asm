@@ -87,8 +87,8 @@ Entry: {
 
 	VIC4_SetScreenPtr(SCREEN_BASE)
 
-	jsr InitScreenColorRAM
 	jsr InitPalette
+	jsr CopyColors
 
 	lda #$00
 	sta $d020
@@ -314,101 +314,7 @@ mainloop:
 }
 
 // ------------------------------------------------------------
-// Routine to initialize the screen and color RAM with data
 //
-InitScreenColorRAM: {
-	.var chrPtr = Tmp				// 16bit
-	.var chrIndx = Tmp+2			// 16bit
-	.var colPtr = Tmp1				// 32bit
-
-	//
-	lda #<SCREEN_BASE
-	sta chrPtr+0
-	lda #>SCREEN_BASE
-	sta chrPtr+1
-
-	lda #<COLOR_RAM
-	sta colPtr+0
-	lda #>COLOR_RAM
-	sta colPtr+1
-	lda #[COLOR_RAM >>16]
-	sta colPtr+2
-	lda #[COLOR_RAM >> 24]
-	sta colPtr+3
-
-	//
-	lda #<(Chars/64)
-	sta chrIndx+0
-	lda #>(Chars/64)
-	sta chrIndx+1
-
-	ldx #$00
-!oloop:
-
-	ldz #$00
-
-	// // GOTOX
-	lda #$00
-	sta (chrPtr),z
-	lda #$10
-	sta ((colPtr)),z
-	inz
-
-	lda #$00
-	sta (chrPtr),z
-	lda #$00
-	sta ((colPtr)),z
-	inz
-
-	// layer 1
-	ldy #$00
-!iloop1:
-	txa
-	and #$03
-	asl
-	clc
-	adc chrIndx+0
-	sta ch0
-	lda #$00
-	adc chrIndx+1
-	sta ch1
-
-	tya
-	and #$01
-	clc
-	adc ch0
-	sta ch0
-	lda #$00
-	adc ch1
-	sta ch1
-
-	lda ch0:#$00
-	sta (chrPtr),z
-	lda #$08
-	sta ((colPtr)),z
-	inz
-
-	lda ch1:#$00
-	sta (chrPtr),z
-	lda #$0f
-	sta ((colPtr)),z
-	inz
-
-	iny
-	cpy #CHARS_WIDE
-	bne !iloop1-
-
-	// advance to next row
-	_add16im(chrPtr, LOGICAL_ROW_SIZE, chrPtr)
-	_add16im(colPtr, LOGICAL_ROW_SIZE, colPtr)
-
-	inx
-	cpx #LOGICAL_NUM_ROWS
-	lbne !oloop-
-
-	rts
-}
-
 InitPalette: {
 		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
 		lda #%00000000 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
@@ -436,6 +342,8 @@ InitPalette: {
 		rts
 }
 
+// ------------------------------------------------------------
+//
 CopyColors: 
 {
 	RunDMAJob(Job)
@@ -445,6 +353,8 @@ Job:
 	DMACopyJob(COLOR_BASE, COLOR_RAM, LOGICAL_ROW_SIZE * NUM_ROWS, false, false)
 }
 
+// ------------------------------------------------------------
+//
 .segment Data "Palettes"
 Palette:
 	.import binary "./test_pal.bin"
@@ -454,49 +364,40 @@ Palette:
 Chars:
 	.import binary "./test_chr.bin"
 
+// ------------------------------------------------------------
+//
 .segment Data "ScreenData"
 SCREEN_BASE:
 {
-	.for(var r=0; r<LOGICAL_NUM_ROWS; r++) {
-		.for(var c=0; c<20; c++) {
-			.if(mod(r,2)==0) {
-				.if(random() < 0.1) {
-					.byte $04,$02
-				} else {
-					.byte $01,$02
-				}
-			} else {
-				.byte $02,$02
-			}
-		}
-
+	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
+	{
 		//GOTOX position
 		.byte $00,$00
-		//Character (blank to start)
-		.byte $00,$02
 
-		//GOTOX position
-		.byte $40,$01
-		//Character (blank to start)
-		.byte $00,$02		
+		.for(var c = 0;c < CHARS_WIDE;c++) 
+		{
+			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
+			//Char index
+			.byte <choffs,>choffs
+		}
 	}
-	// .fill 40, 0
 }
 
+// ------------------------------------------------------------
+//
 .segment Data "ColorData"
 COLOR_BASE:
 {
-	.for(var r=0; r<LOGICAL_NUM_ROWS; r++) {
-		.for(var c=0; c<20; c++) {
-			.byte $08,$00		//Byte0Bit3 = enable NCM mode
-		}
-		//GOTOX marker - Byte0bit4=GOTOXMarker, Byte0Bit7=Transparency
-		.byte $90,$00
-		.byte $08,$00 //Byte0Bit3 = enable NCM mode
+	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
+	{
+		//GOTOX marker - Byte0bit4=GOTOXMarker
+		.byte $10,$00
 
-		//GOTOX marker - Byte0bit4=GOTOXMarker, Byte0Bit7=Transparency
-		.byte $90,$00
-		.byte $08,$00	//Byte0Bit3 = enable NCM mode				
+		.for(var c = 0;c < CHARS_WIDE;c++) 
+		{
+			//Byte0Bit3 = enable NCM mode
+			.byte $08,$0f
+		}
 	}
 }
 
