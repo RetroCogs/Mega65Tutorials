@@ -20,7 +20,7 @@
 .const SCREEN_HEIGHT = 224
 
 // Choose IS_NTSC if you are running in NTSC 60hz mode
-#define IS_NTSC
+//#define IS_NTSC
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
@@ -33,11 +33,11 @@
 // We have a screen size that is larger than the visible area so we can freely
 // scroll around it.
 //
-.const NUM_SCREENS_HIGH = 2
+.const NUM_SCREENS_HIGH = 1
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = ((CHARS_WIDE * 2) + 3) * 2
+.const LOGICAL_ROW_SIZE = (1 + CHARS_WIDE + 1 + CHARS_WIDE + 2) * 2
 .const LOGICAL_NUM_ROWS = CHARS_HIGH * NUM_SCREENS_HIGH
 
 .const CHARCOUNT = LOGICAL_ROW_SIZE / 2
@@ -130,14 +130,23 @@ Entry: {
 	lda #(>BOTTOM_BORDER) & %00001111
 	tsb $d04b
 
-	VIC4_SetNumCharacters(CHARCOUNT)
-	VIC4_SetNumRows(CHARS_HIGH+1)
+	// TEXTYPOS
+	lda #<TEXTYPOS
+	sta $d04e
+	lda #>TEXTYPOS
+	sta $d04f
 
-	VIC4_SetLogicalRowSize(LOGICAL_ROW_SIZE)
+	VIC4_SetNumCharacters(CHARCOUNT)
+	VIC4_SetNumRows(CHARS_HIGH)
+
+	VIC4_SetRowWidth(LOGICAL_ROW_SIZE)
 
 	VIC4_SetScreenPtr(SCREEN_BASE)
 
 	jsr InitScreenColorRAM
+
+	lda #$05
+	sta $d020
 
 	// Main loop
 mainloop:
@@ -160,111 +169,6 @@ mainloop:
 	sta XPos+0
 	lda costable,x
 	sta YPos+0
-
-	lda #$00
-	sta XPos+0
-	sta YPos+0
-
-	// Set the fine X scroll by moving TextXPos left
-	//
-	lda XPos+0
-	and #$07
-#if H320
-	asl						// When in H320 mode, move 2x the number of pixels
-#endif
-	sta shiftLeft
-
-	sec
-	lda #<LEFT_BORDER						//#$50
-	sbc shiftLeft:#$00
-	sta $d04c
-	lda #>LEFT_BORDER
-	sbc #$00
-	sta $d04d
-
-	// Set the fine Y scroll by moving TextYPos up
-	//
-	lda YPos+0
-	and #$07
-#if V200
-	asl						// When in H200 mode, move 2x the number of pixels
-#endif
-	sta shiftUp
-
-	sec
-	lda #<TOP_BORDER
-	sbc shiftUp:#$00
-	sta $d04e
-	lda #>TOP_BORDER
-	sbc #$00
-	sta $d04f
-
-	// Now calculate the Y course scroll
-	lda YPos+0
-	sta YCourse+0
-	lda YPos+1
-	sta YCourse+1
-
-	// Shift right 3 times to divide by 8
-	lsr YCourse+1
-	ror YCourse+0
-	lsr YCourse+1
-	ror YCourse+0
-	lsr YCourse+1
-	ror YCourse+0
-
-	// Now calculate the X course scroll
-	lda XPos+0
-	sta XCourse+0
-	lda XPos+1
-	sta XCourse+1
-
-	// Shift right 3 times to divide by 8
-	lsr XCourse+1
-	ror XCourse+0
-	lsr XCourse+1
-	ror XCourse+0
-	lsr XCourse+1
-	ror XCourse+0
-
-	// We have a lookup table for the byte offset of each row,
-	// put Y course into X to access that table
-	ldx YCourse+0
-
-	// Using X as the row value, add the X course value to get the
-	// offset into both the screen and color RAM
-	//
-	clc
-	lda RowOffsetsLo,x
-	adc XCourse+0
-	sta screenOffsLo
-	sta colorOffsLo
-	lda RowOffsetsHi,x
-	adc XCourse+1
-	sta screenOffsHi
-	sta colorOffsHi
-
-	// Set the lower 16bits of screen ptr, 
-	// !!! avoid having your screen buffer cross a 64k boundary) !!!
-	//
-	clc
-	lda #<SCREEN_BASE
-	adc screenOffsLo:#$00
-	sta $d060
-	lda #>SCREEN_BASE
-	adc screenOffsHi:#$00
-	sta $d061
-
-	// Set the lower 16bits of color ptr, 
-	// !!! avoid having your color buffer cross a 64k boundary) !!!
-	//
-	clc
-	lda #<COLOR_RAM
-	adc colorOffsLo:#$00
-	sta $d064
-	lda #>COLOR_RAM
-	adc colorOffsHi:#$00
-	sta $d065
 
     dec $d020
 
@@ -296,10 +200,23 @@ InitScreenColorRAM: {
 
 	ldz #$00
 
+	// gotox - 0
+	lda #$ff
+	sta (ChrPtr),z
+	lda #$10
+	sta ((ColPtr)),z
+	inz
+
+	lda #$03
+	sta (ChrPtr),z
+	lda #$00
+	sta ((ColPtr)),z
+	inz
+
 	// layer 1
 	ldy #$00
 !iloop1:
-	lda #$01
+	lda #$66
 	sta (ChrPtr),z
 	lda #$00
 	sta ((ColPtr)),z
@@ -316,13 +233,13 @@ InitScreenColorRAM: {
 	bne !iloop1-
 
 	// gotox - 0
-	lda #$00
+	lda #$ff
 	sta (ChrPtr),z
 	lda #$90
 	sta ((ColPtr)),z
 	inz
 
-	lda #$00
+	lda #$03
 	sta (ChrPtr),z
 	lda #$00
 	sta ((ColPtr)),z
@@ -331,7 +248,7 @@ InitScreenColorRAM: {
 	// layer 2
 	ldy #$00
 !iloop2:
-	lda #$01
+	lda #$66
 	sta (ChrPtr),z
 	lda #$00
 	sta ((ColPtr)),z

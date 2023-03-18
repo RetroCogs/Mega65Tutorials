@@ -31,8 +31,10 @@
 // horizontal and vertial centers
 //
 .const LEFT_BORDER = (HORIZONTAL_CENTER - ((SCREEN_WIDTH * HPIXELSCALE) / 2))
-.const TOP_BORDER = (VERTICAL_CENTER - ((SCREEN_HEIGHT * VPIXELSCALE) / 2))
-.const BOTTOM_BORDER = (VERTICAL_CENTER + ((SCREEN_HEIGHT * VPIXELSCALE) / 2))
+.const TOP_BORDER = (VERTICAL_CENTER - ((SCREEN_HEIGHT * VPIXELSCALE) / 2))-2
+.const BOTTOM_BORDER = (VERTICAL_CENTER + ((SCREEN_HEIGHT * VPIXELSCALE) / 2))-2
+
+.const TEXTYPOS = TOP_BORDER
 
 .const MAX_WIDTH = HORIZONTAL_CENTER - HSCROLLAMOUNT
 .print "MAX_WIDTH = " + MAX_WIDTH
@@ -397,13 +399,13 @@ end:
 }
 
 .macro VIC4_SetScreenPtr(addr) {
-	lda #[addr & $ff]
+	lda #[[addr] & $ff]
 	sta $d060
-	lda #[[addr & $ff00]>>8]
+	lda #[[addr >> 8] & $ff]
 	sta $d061
-	lda #[[addr & $ff0000]>>16]
+	lda #[[addr >> 16] & $ff]
 	sta $d062
-	lda #[[[addr & $ff0000]>>24] & $0f]
+	lda #[[addr >> 24] & $ff]
 	sta $d063
 }
 
