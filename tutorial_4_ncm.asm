@@ -55,6 +55,8 @@
 .const LOGICAL_NUM_ROWS = NUM_ROWS * NUM_SCREENS_HIGH
 
 .print "LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE
+.print "NUM_CHARS = " + LOGICAL_ROW_SIZE / 2
+
 .print "SCREEN_BASE = " + toHexString(SCREEN_BASE)
 
 // ------------------------------------------------------------

@@ -1,0 +1,9 @@
+MEMORY
+{
+	RAM:			start=$2001, size=$f800;
+}
+
+SEGMENTS
+{
+	DECRZEROINIT:	load=RAM, start=$2001;
+}
