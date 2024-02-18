@@ -108,11 +108,14 @@ mainloop:
 !:	cmp $d052 
     beq !-
 
-    inc $d020
+	lda $d021
+    inc
+	and #$0f
+	sta $d021
 
 	inc FrameCount
 
-    dec $d020
+    // dec $d020
 
 	jmp mainloop
 
@@ -336,10 +339,10 @@ InitPalette: {
 		bne !-
 
 		// Ensure index 0 is black
-		lda #$00
-		sta $d100
-		sta $d200
-		sta $d300
+		// lda #$00
+		// sta $d100
+		// sta $d200
+		// sta $d300
 
 		rts
 }
@@ -359,12 +362,12 @@ Job:
 //
 .segment Data "Palettes"
 Palette:
-	.import binary "./test_pal.bin"
+	.import binary "./ncm_test_pal.bin"
 
 .segment Data "Chars"
 .align 64
 Chars:
-	.import binary "./test_chr.bin"
+	.import binary "./ncm_test_chr.bin"
 
 // ------------------------------------------------------------
 //
@@ -398,7 +401,7 @@ COLOR_BASE:
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
 			//Byte0Bit3 = enable NCM mode
-			.byte $08,$0f
+			.byte $08,(c&15)
 		}
 	}
 }
