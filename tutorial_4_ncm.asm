@@ -51,7 +51,7 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2))
+.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2)) * 2
 .const LOGICAL_NUM_ROWS = NUM_ROWS * NUM_SCREENS_HIGH
 
 .print "LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE
@@ -108,14 +108,11 @@ mainloop:
 !:	cmp $d052 
     beq !-
 
-	lda $d021
-    inc
-	and #$0f
-	sta $d021
+	inc $d020
 
 	inc FrameCount
 
-    // dec $d020
+    dec $d020
 
 	jmp mainloop
 
@@ -217,15 +214,6 @@ mainloop:
 		lda charXPos+1
 		and #%00111111
 		tsb $d05d
-
-		// Work around VHDL issue
-		// 
-		// If running on real hardware, shift screen left SCALED pixel
-		lda $d60f
-		and #%00100000
-		beq !+
-		_sub16im(charXPos, HPIXELSCALE, charXPos)
-	!:
 
 		// TEXTXPOS - Text X Pos
 		lda charXPos+0
@@ -339,10 +327,10 @@ InitPalette: {
 		bne !-
 
 		// Ensure index 0 is black
-		// lda #$00
-		// sta $d100
-		// sta $d200
-		// sta $d300
+		lda #$00
+		sta $d100
+		sta $d200
+		sta $d300
 
 		rts
 }
@@ -377,13 +365,21 @@ SCREEN_BASE:
 	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
 	{
 		//GOTOX position
-		.byte $00,$00
+		.word 0
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
 			//Char index
-			.byte <choffs,>choffs
+			.word (Chars/64) + (((r&3)*2) + (c&1))
+		}
+
+		//GOTOX position
+		.word 0
+
+		.for(var c = 0;c < CHARS_WIDE;c++) 
+		{
+			//Char index
+			.word ((Chars/64) + (((r&3)*2) + (c&1))) + 8
 		}
 	}
 }
@@ -397,6 +393,16 @@ COLOR_BASE:
 	{
 		//GOTOX marker - Byte0bit4=GOTOXMarker
 		.byte $10,$00
+
+		.for(var c = 0;c < CHARS_WIDE;c++) 
+		{
+			//Byte0Bit3 = enable NCM mode
+			.byte $08,(c&15)
+		}
+
+		//GOTOX marker - Byte0bit4=GOTOXMarker
+		//GOTOX marker - Byte0bit7=Transparent
+		.byte $90,$00
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{

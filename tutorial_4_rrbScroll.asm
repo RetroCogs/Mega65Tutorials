@@ -92,7 +92,7 @@ Entry: {
 	jsr InitPalette
 	jsr CopyColors
 
-	lda #$01
+	lda #$00
 	sta $d020
 	sta $d021
 
