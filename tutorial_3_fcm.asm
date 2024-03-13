@@ -6,7 +6,7 @@
 // and TextYPos and then calculating the address of the screen to set into
 // ScreenPtr and ColorPtr
 //
-.file [name="tutorial_4_ncm.prg", segments="Code,Data"]
+.file [name="tutorial_3_fcm.prg", segments="Code,Data"]
 
 // Color RAM is at a fixed base address
 //
@@ -34,14 +34,14 @@
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
-.const SCREEN_HEIGHT = 224
+.const SCREEN_HEIGHT = 192
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
 
 // Figure out how many characters wide and high the visible area is
 //
-.const CHARS_WIDE = (SCREEN_WIDTH / 16)		// NCM chars are 16 pixels wide
+.const CHARS_WIDE = (SCREEN_WIDTH / 8)
 .const NUM_ROWS = (SCREEN_HEIGHT / 8)
 
 // We have a screen size that is larger than the visible area so we can freely
@@ -325,13 +325,13 @@ InitPalette: {
 	!:
 		lda Palette + $000,x 	// background
 		sta $d100,x
-		lda Palette + $010,x 
+		lda Palette + $100,x 
 		sta $d200,x
-		lda Palette + $020,x 
+		lda Palette + $200,x 
 		sta $d300,x
 
 		inx 
-		cpx #$10
+		cpx #$00
 		bne !-
 
 		// Ensure index 0 is black
@@ -359,11 +359,11 @@ Job:
 .segment Data "Chars"
 .align 64
 Chars:
-	.import binary "./ncm_test_chr.bin"
+	.import binary "./fcm_test_chr.bin"
 
 .segment Data "Palettes"
 Palette:
-	.import binary "./ncm_test_pal.bin"
+	.import binary "./fcm_test_pal.bin"
 
 .print "Chars = " + toHexString(Chars)
 
@@ -379,7 +379,7 @@ SCREEN_BASE:
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
+			.var choffs = (Chars/64) + (((r&7)*8) + (c&7))
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -398,9 +398,8 @@ COLOR_BASE:
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			// Byte0bit3 = NCM
 			// Byte1bit0-3 = Colour 15 index
-			.byte $08,$00
+			.byte $00,$00
 		}
 	}
 }

@@ -129,7 +129,7 @@ Entry: {
 	VIC4_SetNumCharacters(CHARS_WIDE+1)
 	VIC4_SetNumRows(CHARS_HIGH+1)
 
-	VIC4_SetLogicalRowSize(LOGICAL_ROW_SIZE)
+	VIC4_SetRowWidth(LOGICAL_ROW_SIZE)
 
 	VIC4_SetScreenPtr(SCREEN_BASE)
 

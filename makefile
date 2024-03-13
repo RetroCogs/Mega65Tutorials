@@ -1,5 +1,5 @@
 KICK=/Users/colinreed/Applications/KickAss/KickAss65CE02-5.24f.jar
-APPNAME=tutorial_4_ncm
+APPNAME=tutorial_5_rrbScroll
 C1541=/opt/homebrew/Cellar/vice/3.7.1/bin/c1541
 XEMU=/Applications/Xemu/xmega65.app/Contents/MacOS/xmega65
 PNG65=node ./build/aseparse65/png65.js

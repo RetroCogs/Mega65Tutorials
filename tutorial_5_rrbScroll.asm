@@ -6,7 +6,7 @@
 // and TextYPos and then calculating the address of the screen to set into
 // ScreenPtr and ColorPtr
 //
-.file [name="tutorial_4_rrbScroll.prg", segments="Code,Data"]
+.file [name="tutorial_5_rrbScroll.prg", segments="Code,Data"]
 
 // Color RAM is at a fixed base address
 //
@@ -41,7 +41,8 @@
 
 // Figure out how many characters wide and high the visible area is
 //
-.const CHARS_WIDE = (SCREEN_WIDTH / 8)
+.const CHARS_WIDE = (SCREEN_WIDTH / 16) + 2		// NCM chars are 16 pixels wide
+												// Add two extra characters to show as we shift off left side
 .const NUM_ROWS = (SCREEN_HEIGHT / 8)
 
 // We have a screen size that is larger than the visible area so we can freely
@@ -51,7 +52,9 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2))
+.const LOGICAL_LAYER_SIZE = (2 + (CHARS_WIDE * 2))
+
+.const LOGICAL_ROW_SIZE = LOGICAL_LAYER_SIZE * 2
 .const LOGICAL_NUM_ROWS = NUM_ROWS * NUM_SCREENS_HIGH
 
 .print "LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE
@@ -66,6 +69,8 @@
 	Tmp1:			.word $0000,$0000
 
 	FrameCount:		.byte $00
+	ScrollX1:		.byte $00
+	ScrollX2:		.byte $00
 
 // ------------------------------------------------------------
 //
@@ -96,6 +101,10 @@ Entry: {
 	sta $d020
 	sta $d021
 
+	lda #$00
+	sta ScrollX1
+	sta ScrollX2
+
 	// Main loop
 mainloop:
 	// Wait for (H400) rasterline $07
@@ -108,11 +117,75 @@ mainloop:
 !:	cmp $d052 
     beq !-
 
-    inc $d020
+	lda #$04
+    sta $d020
 
 	inc FrameCount
 
-    dec $d020
+	inc ScrollX1
+
+	lda FrameCount
+	and #$01
+	bne !+
+
+	inc ScrollX2
+
+!:
+	// Update GOTOX positions for each row ...
+
+	_set16im(SCREEN_BASE, Tmp)							// Bottom Layer
+	_set16im(SCREEN_BASE + LOGICAL_LAYER_SIZE, Tmp+2)	// Top Layer
+
+	// Layer1 : Calculate how much to shift the layer row off the left size	
+	lda ScrollX1
+	and #$1f
+	sta ul2xscroll
+	sec
+	lda #0
+	sbc ul2xscroll:#$00
+	sta Tmp1
+	lda #0
+	sbc #0
+	and #$03
+	sta Tmp1+1
+
+	// Layer1 : Calculate how much to shift the layer row off the left size	
+	lda ScrollX2
+	and #$1f
+	sta ul2xscroll2
+	sec
+	lda #0
+	sbc ul2xscroll2:#$00
+	sta Tmp1+2
+	lda #0
+	sbc #0
+	and #$03
+	sta Tmp1+3
+
+	ldx #$00
+!:
+	ldy #$00
+
+	lda Tmp1		// Update Byte0 of bottom layer
+	sta (Tmp),y
+	lda Tmp1+2		// Update Byte0 of top layer
+	sta (Tmp+2),y
+	iny
+	lda Tmp1+1		// Update Byte1 of bottom layer
+	sta (Tmp),y
+	lda Tmp1+3		// Update Byte1 of top layer
+	sta (Tmp+2),y
+
+	// Advance bottom and top pointers to the next logical row
+	_add16im(Tmp, LOGICAL_ROW_SIZE, Tmp)
+	_add16im(Tmp+2, LOGICAL_ROW_SIZE, Tmp+2)
+	
+	inx	
+	cpx #LOGICAL_NUM_ROWS
+	bne !-
+
+	lda #$00
+    sta $d020
 
 	jmp mainloop
 
@@ -326,13 +399,13 @@ InitPalette: {
 	!:
 		lda Palette + $000,x 	// background
 		sta $d100,x
-		lda Palette + $100,x 
+		lda Palette + $010,x 
 		sta $d200,x
-		lda Palette + $200,x 
+		lda Palette + $020,x 
 		sta $d300,x
 
 		inx 
-		cpx #$00
+		cpx #$10
 		bne !-
 
 		// Ensure index 0 is black
@@ -360,11 +433,11 @@ Job:
 .segment Data "Chars"
 .align 64
 Chars:
-	.import binary "./fcm_test_chr.bin"
+	.import binary "./ncm_test_chr.bin"
 
 .segment Data "Palettes"
 Palette:
-	.import binary "./fcm_test_pal.bin"
+	.import binary "./ncm_test_pal.bin"
 
 .print "Chars = " + toHexString(Chars)
 
@@ -380,10 +453,21 @@ SCREEN_BASE:
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*4) + (c&3))
+			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
 			//Char index
 			.byte <choffs,>choffs
 		}
+
+		//GOTOX position
+		.byte $00,$00
+
+		.for(var c = 0;c < CHARS_WIDE;c++) 
+		{
+			.var choffs = (Chars/64) + (((r&3)*2) + (c&1)) + 8
+			//Char index
+			.byte <choffs,>choffs
+		}
+
 	}
 }
 
@@ -399,8 +483,21 @@ COLOR_BASE:
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			.byte $00,$00
+			// Byte0bit3 = NCM
+			// Byte1bit0-3 = Colour 15 index
+			.byte $08,$0f
 		}
+
+		//GOTOX marker - Byte0bit4=GOTOXMarker, Byte0bit7=Transparent
+		.byte $90,$00
+
+		.for(var c = 0;c < CHARS_WIDE;c++) 
+		{
+			// Byte0bit3 = NCM
+			// Byte1bit0-3 = Colour 15 index
+			.byte $08,$0f
+		}
+
 	}
 }
 
