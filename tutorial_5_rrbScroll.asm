@@ -68,6 +68,9 @@
 	ScrollX1:		.byte $00
 	ScrollX2:		.byte $00
 
+	ShiftOffsetsL:	.byte $00, $00
+	ShiftOffsetsH:	.byte $00, $00
+
 // ------------------------------------------------------------
 //
 .segment Code
@@ -127,64 +130,94 @@ mainloop:
 	inc ScrollX2
 
 !:
-	// Update GOTOX positions for each row ...
-
-	_set16im(SCREEN_BASE, Tmp)							// Bottom Layer
-	_set16im(SCREEN_BASE + LOGICAL_LAYER_SIZE, Tmp+2)	// Top Layer
 
 	// Layer1 : Calculate how much to shift the layer row off the left size	
-	lda ScrollX1
-	and #$1f
-	sta ul2xscroll
-	sec
-	lda #0
-	sbc ul2xscroll:#$00
-	sta Tmp1
-	lda #0
-	sbc #0
-	and #$03
-	sta Tmp1+1
-
-	// Layer1 : Calculate how much to shift the layer row off the left size	
-	lda ScrollX2
-	and #$1f
-	sta ul2xscroll2
-	sec
-	lda #0
-	sbc ul2xscroll2:#$00
-	sta Tmp1+2
-	lda #0
-	sbc #0
-	and #$03
-	sta Tmp1+3
-
 	ldx #$00
-!:
-	ldy #$00
+	lda ScrollX1
+	jsr UpdateShiftAmount
 
-	lda Tmp1		// Update Byte0 of bottom layer
-	sta (Tmp),y
-	lda Tmp1+2		// Update Byte0 of top layer
-	sta (Tmp+2),y
-	iny
-	lda Tmp1+1		// Update Byte1 of bottom layer
-	sta (Tmp),y
-	lda Tmp1+3		// Update Byte1 of top layer
-	sta (Tmp+2),y
+	// Layer2 : Calculate how much to shift the layer row off the left size	
+	ldx #$01
+	lda ScrollX2
+	jsr UpdateShiftAmount
 
-	// Advance bottom and top pointers to the next logical row
-	_add16im(Tmp, LOGICAL_ROW_SIZE, Tmp)
-	_add16im(Tmp+2, LOGICAL_ROW_SIZE, Tmp+2)
-	
-	inx	
-	cpx #LOGICAL_NUM_ROWS
-	bne !-
+	// Update the GOTOX position for all layers using the offsets calculated above
+	jsr UpdateLayerPositions
 
 	lda #$00
     sta $d020
 
 	jmp mainloop
 
+}
+
+// Calculate the GOTOX position, this is 0 - (scrollPos & $1f)
+//
+UpdateShiftAmount:
+{
+	and #$1f
+	sta ul2xscroll
+	sec
+	lda #0
+	sbc ul2xscroll:#$00
+	sta ShiftOffsetsL,x
+	lda #0
+	sbc #0
+	and #$03
+	sta ShiftOffsetsH,x
+	rts
+}
+
+// Update the RRB GOTOX value for each of the layers
+//
+// loop X through each layer
+// loop Z through each row
+//
+UpdateLayerPositions:
+{
+	.var layerPtr = Tmp			// 16bit
+	.var rowPtr = Tmp+2			// 16bit
+
+	// Start layerPtr at top left GOTOX token
+	_set16im(SCREEN_BASE, layerPtr)
+
+	// Update all layers
+	ldx #$00
+
+layerLoop:
+
+	// Copy layerPtr to rowPtr
+	_set16(layerPtr, rowPtr)
+
+	// Update GOTOX position for each row in this layer
+	ldz #$00
+
+rowLoop:
+
+	ldy #$00
+	lda ShiftOffsetsL,x		// Update Byte0 of layer row
+	sta (rowPtr),y
+	iny
+	lda (rowPtr),y			// Get byte1 of layer row and preserve top 3 bits (FCM char data Y offset)
+	and #$e0
+	ora ShiftOffsetsH,x		// Update Byte1 of layer row
+	sta (rowPtr),y
+
+	// Advance row pointers to the next logical row
+	_add16im(rowPtr, LOGICAL_ROW_SIZE, rowPtr)
+	
+	inz	
+	cpz #LOGICAL_NUM_ROWS
+	bne rowLoop
+
+	// Advance layer pointer to the next logical layer
+	_add16im(layerPtr, LOGICAL_LAYER_SIZE, layerPtr)
+
+	inx
+	cpx #$02
+	bne layerLoop
+
+	rts
 }
 
 // ------------------------------------------------------------
