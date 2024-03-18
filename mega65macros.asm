@@ -325,6 +325,19 @@ end:
 	sta dst+3
 }
 
+// _set32 - store a 32bit value to a memory location
+.macro _set32(value, dst)
+{
+	lda value+0
+	sta dst+0
+	lda value+1
+	sta dst+1
+	lda value+2
+	sta dst+2
+	lda value+3
+	sta dst+3
+}
+
 // _add32im - add a 32bit constant to a memory location, store in result
 .macro _add32im(src, value, dst)
 {
