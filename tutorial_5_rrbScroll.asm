@@ -43,31 +43,26 @@
 // Figure out how many characters wide and high the visible area is
 //
 .const CHARS_WIDE = (SCREEN_WIDTH / 16) + 1		// NCM chars are 16 pixels wide
-.print "CHARS_WIDE = " + CHARS_WIDE
-												// Add two extra characters to show as we shift off left side
+												// Add one extra characters to show as we shift off left side
 .const NUM_ROWS = (SCREEN_HEIGHT / 8)
+
+// LOGICAL_LAYER_SIZE is the number of bytes the VIC-IV uses for one layer
+//
+.const LOGICAL_LAYER_SIZE = (2 + (CHARS_WIDE * 2))
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_LAYER_SIZE = (2 + (CHARS_WIDE * 2))
-.print "LOGICAL_LAYER_SIZE = " + LOGICAL_LAYER_SIZE
-
-.const LOGICAL_ROW_SIZE = LOGICAL_LAYER_SIZE * 2
+.const LOGICAL_ROW_SIZE = LOGICAL_LAYER_SIZE * 2	// 2 layers
 .const LOGICAL_NUM_ROWS = NUM_ROWS
-
-.print "LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE
-.print "NUM_CHARS = " + LOGICAL_ROW_SIZE / 2
 
 // ------------------------------------------------------------
 //
 .const MAP_WIDTH = (1024 / 16)
-.print "MAP_WIDTH = " + MAP_WIDTH
 .const MAP_HEIGHT = (SCREEN_HEIGHT / 8)
 
+// MAP_LOGICAL_SIZE is the number of bytes each row takes in the map / attrib data
+//
 .const MAP_LOGICAL_SIZE = MAP_WIDTH * 2
-.print "MAP_LOGICAL_SIZE = " + MAP_LOGICAL_SIZE
-
-.print "MAP_SIZE = " + (MAP_LOGICAL_SIZE * MAP_HEIGHT)
 
 // ------------------------------------------------------------
 //
@@ -135,6 +130,7 @@ mainloop:
 
 	inc FrameCount
 
+	// Do some sin/cos based scrolling for the 2 layers
 	ldx FrameCount
 	lda sintable,x
 	sta ScrollX1
@@ -154,6 +150,7 @@ mainloop:
 	// Update the GOTOX position for all layers using the offsets calculated above
 	jsr UpdateLayerPositions
 
+	// Update the char / attrib data using DMA
 	jsr UpdateLayerData.UpdateLayer1
 	jsr UpdateLayerData.UpdateLayer2
 	
@@ -164,7 +161,8 @@ mainloop:
 
 }
 
-// Calculate the GOTOX position, this is 0 - (scrollPos & $1f)
+// ------------------------------------------------------------
+// Calculate the GOTOX position, this is 0 - (scrollPos & $0f)
 //
 UpdateShiftAmount:
 {
@@ -181,10 +179,11 @@ UpdateShiftAmount:
 	rts
 }
 
+// ------------------------------------------------------------
 // Update the RRB GOTOX value for each of the layers
 //
 // loop X through each layer
-// loop Z through each row
+// loop Y through each row
 //
 UpdateLayerPositions:
 {
@@ -233,6 +232,11 @@ rowLoop:
 	rts
 }
 
+// ------------------------------------------------------------
+// To update the char / attrib data for the scrolling layers we need to DMA
+// data from the Map into the screen, this is done as a DMA for each row,
+// one for chars and one for attribs.
+//
 UpdateLayerData: {
 	.var src_tile_ptr = Tmp			// 32bit
 	.var src_attrib_ptr = Tmp1		// 32bit
@@ -243,15 +247,13 @@ UpdateLayerData: {
 	.var src_offset = Tmp3			// 16bit
 	.var src_stride = Tmp3+2		// 16bit
 
-.print "Layer 1 = " + toHexString(MapRam)
-
 	UpdateLayer1: {
 		_set32im(MapRam, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
 		_set16im(MAP_LOGICAL_SIZE, src_stride)
 
-		// Source offset is ScrollX1 >> 4
+		// Source offset is (ScrollX1 >> 4) << 1
 		_set16(ScrollX1, src_offset)
 
 		lsr src_offset+1
@@ -280,7 +282,7 @@ UpdateLayerData: {
 
 		_set16im(MAP_LOGICAL_SIZE, src_stride)
 
-		// Source offset is ScrollX2 >> 4
+		// Source offset is (ScrollX2 >> 4) << 1
 		_set16(ScrollX2, src_offset)
 
 		lsr src_offset+1
@@ -293,7 +295,7 @@ UpdateLayerData: {
 		and #$fe
 		sta src_offset+0
 
-		// Copy into char after GOTOX
+		// Copy into char after GOTOX on the second layer
 		_set16im(2 + LOGICAL_LAYER_SIZE, dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
@@ -303,6 +305,8 @@ UpdateLayerData: {
 		rts
 	}
 
+	// Loop for each row in both chars and attribs and DMA one screen wide piece of data
+	//
 	CopyLayerChunks: {
 		_set16(copy_length, tileLength)
 		_set16(copy_length, attribLength)
@@ -442,35 +446,32 @@ UpdateLayerData: {
 #import "mega65system.asm"
 
 // ------------------------------------------------------------
-// Fill the screen and color ram buffers with RRB data
-//
-// GOTOX + CHARS_WIDE + GOTOX + CHARS_WIDE
+// Fill the screen and color ram buffers with RRB data for the GOTOX columns
 //
 InitScreenColorRAM: {
 	.var screenPtr = Tmp			// 32bit
 	.var attribPtr = Tmp1			// 32bit
 	.var gotoXmarker = Tmp2			// 8bit
-	.var lineCount = Tmp2+1			// 8bit
 	.var tmpChar = Tmp2+2			// 16bit
 
 	_set32im(ScreenRam, screenPtr)
 	_set32im(COLOR_RAM, attribPtr)
 
-	lda #$00
-	sta lineCount
+	ldy #$00
 
 lineLoop:
 
 	_set16im(Chars/64, tmpChar)
 
+	// First layer uses GOTOX flag
 	lda #$10
 	sta gotoXmarker
 
 	ldx #$00
 
-	ldz #$00
-
 layerLoop:
+
+	ldz #$00
 
 	// Screen byte 0 : GOTOX <pos
 	lda #$00
@@ -488,31 +489,6 @@ layerLoop:
 	sta ((attribPtr)),z
 	inz	
 
-	ldy #$00
-
-charLoop:
-
-	// Screen byte 0 : <choffs
-	lda tmpChar
-	sta ((screenPtr)),z
-	// Attrib byte 0 : Byte0bit3 = NCM
-	lda #$08
-	sta ((attribPtr)),z
-	inz	
-
-	// Screen byte 1 : >choffs
-	lda tmpChar+1
-	sta ((screenPtr)),z
-	// Attrib byte 1 : Byte1bit0-3 = Colour 15 index
-	lda #$0f
-	sta ((attribPtr)),z
-	inz	
-
-	// do for all chars wide
-	iny	
-	cpy #CHARS_WIDE
-	bne charLoop
-
 	// Second layer needs to be transparent
 	lda gotoXmarker
 	ora #$80
@@ -520,20 +496,17 @@ charLoop:
 
 	_add16im(tmpChar, 8, tmpChar)
 
+	_add32im(screenPtr, LOGICAL_LAYER_SIZE, screenPtr)
+	_add32im(attribPtr, LOGICAL_LAYER_SIZE, attribPtr)
+
 	inx
 	cpx #$02
 	bne layerLoop
 
-	_add32im(screenPtr, LOGICAL_ROW_SIZE, screenPtr)
-	_add32im(attribPtr, LOGICAL_ROW_SIZE, attribPtr)
-
 	// do for all rows
-	clc	
-	lda lineCount
-	adc #$01
-	sta lineCount
-	cmp #NUM_ROWS
-	lbne lineLoop
+	iny	
+	cpy #NUM_ROWS
+	bne lineLoop
 
 	rts
 }
@@ -630,7 +603,7 @@ AttribRam:
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
 			// Byte0bit3 = NCM
-			// Byte1bit0-3 = Colour 15 index
+			// Byte1bit0-3 = cycle colour 15 index
 			.byte $08,(c/2)&$0f
 		}
 	}
