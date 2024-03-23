@@ -1,15 +1,14 @@
 // ------------------------------------------------------------
 //
-// Tutorial 6 - 8 way parallax scrolling of 2 layers using RRB.
+// Tutorial 7 - 8 way parallax scrolling with RRBObjs.
 //
-// Shows how to scroll the screen for 2 layers of background, using 2 RRB layers
-// per level of parallax and rowmask we can show 8 way scrolling of two layers.
+// Shows how to add RRBObjs on top of multiple RRB layers.
 //
 // Char and Attrib data are DMA'd into the screen RRB layout and the GOTOX position for 
 // each row is set accordingly.
 //
 //
-.file [name="tutorial_6_rrbParallax.prg", segments="Code,Data"]
+.file [name="tutorial_7_rrbObjs.prg", segments="Code,Data"]
 
 // Color RAM is at a fixed base address
 //
@@ -35,7 +34,7 @@
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
-.const SCREEN_HEIGHT = 224
+.const SCREEN_HEIGHT = 200
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
@@ -127,8 +126,9 @@ mainloop:
 	// Wait for (H400) rasterline $07
 !:	lda $d053
 	and #$07
+	cmp System.BotBorder+1
 	bne !-
-    lda #$04
+    lda System.BotBorder+0
 	cmp $d052 
     bne !-
 !:	cmp $d052 
@@ -431,7 +431,7 @@ UpdateLayerData: {
 	}
 
 	UpdateLayer3: {
-		_set32im(MapRam, src_tile_ptr)
+		_set32im(MapRam3, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
 		_set16im(MAP_LOGICAL_SIZE, src_stride)
@@ -477,7 +477,7 @@ UpdateLayerData: {
 	}
 
 	UpdateLayer4: {
-		_set32im(MapRam2 + MAP_LOGICAL_SIZE, src_tile_ptr)
+		_set32im(MapRam4 + MAP_LOGICAL_SIZE, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
 		_set16im(MAP_LOGICAL_SIZE, src_stride)
@@ -718,7 +718,7 @@ MapRam:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1)) + 8
+			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -726,6 +726,32 @@ MapRam:
 }
 
 MapRam2:
+{
+	.for(var r = 0;r < MAP_HEIGHT;r++) 
+	{
+		.for(var c = 0;c < MAP_WIDTH;c++) 
+		{
+			.var choffs = ((Chars/64) + (((r&3)*2) + (c&1))) - 1
+			//Char index
+			.byte <choffs,>choffs
+		}
+	}
+}
+
+MapRam3:
+{
+	.for(var r = 0;r < MAP_HEIGHT;r++) 
+	{
+		.for(var c = 0;c < MAP_WIDTH;c++) 
+		{
+			.var choffs = (Chars/64) + (((r&3)*2) + (c&1) + 8)
+			//Char index
+			.byte <choffs,>choffs
+		}
+	}
+}
+
+MapRam4:
 {
 	.for(var r = 0;r < MAP_HEIGHT;r++) 
 	{
