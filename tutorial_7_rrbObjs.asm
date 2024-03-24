@@ -30,11 +30,11 @@
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
 #define H320
-.const SCREEN_WIDTH = 320
+.const SCREEN_WIDTH = 160
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
-.const SCREEN_HEIGHT = 200
+.const SCREEN_HEIGHT = 224
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
@@ -49,11 +49,21 @@
 //
 .const LOGICAL_LAYER_SIZE = (2 + (CHARS_WIDE * 2))
 
-.const NUM_LAYERS = 4
+.const NUM_LAYERS = 2
+
+// LOGICAL_OBJS_SIZE is the number of bytes reserved for objs on each row, at a minimum,
+// one objs is a GOTOX + CHAR
+//
+.const LOGICAL_OBJS_SIZE = 2 * (4)
+
+// LOGICAL_EOL_SIZE is the end of line marker, this consists of a GOTOX(SCREEN_WIDTH) + CHAR
+// this end of line set are needed to ensure that all of the line is visible as the RRB
+// system will only draw up to the position of the last character.
+.const LOGICAL_EOL_SIZE = 2 * (2)
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = LOGICAL_LAYER_SIZE * NUM_LAYERS
+.const LOGICAL_ROW_SIZE = (LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_OBJS_SIZE + LOGICAL_EOL_SIZE
 .const LOGICAL_NUM_ROWS = NUM_ROWS
 
 // ------------------------------------------------------------
@@ -110,9 +120,13 @@ Entry: {
 
 	jsr InitPalette
 
+	// We only need to update EOL data once as it never changes
+	//
+	jsr UpdateLayerData.UpdateLayerEOL
+
 	lda #$00
 	sta $d020
-	lda #$0d
+	lda #$00
 	sta $d021
 
 	_set16im(0, ScrollX1)
@@ -137,19 +151,6 @@ mainloop:
 	lda #$04
     sta $d020
 
-	inc FrameCount
-
-	// Do some sin/cos based scrolling for the 2 layers
-	ldx FrameCount
-	lda sintable,x
-	sta ScrollX1
-	sta ScrollY2
-
-	lda costable,x
-	sta ScrollX2
-	sta ScrollY1
-
-
 	// Layer1 : Calculate how much to shift the layer row off the left size	
 	ldx #$00
 	lda ScrollX1
@@ -172,14 +173,114 @@ mainloop:
 	// Update the char / attrib data using DMA
 	jsr UpdateLayerData.UpdateLayer1
 	jsr UpdateLayerData.UpdateLayer2
-	jsr UpdateLayerData.UpdateLayer3
-	jsr UpdateLayerData.UpdateLayer4
-	
-	lda #$00
+	// jsr UpdateLayerData.UpdateLayer3
+	// jsr UpdateLayerData.UpdateLayer4
+
+	// Update RRBObjs using DMA
+	jsr UpdateLayerData.UpdateLayerObjs
+
+	lda #$0d
     sta $d020
+
+	inc FrameCount
+
+	// Do some sin/cos based scrolling for the 2 layers
+	ldx FrameCount
+	lda sintable,x
+	sta ScrollX1
+	sta ScrollY2
+
+	lda costable,x
+	sta ScrollX2
+	sta ScrollY1
+
+	// Clear the work Obj ram using DMA
+	jsr ClearWorkObjs
+
+	// Add Objs into the work ram here
+	//
+	jsr AddObj
+
+	lda #$00
+	sta $d020
+
 
 	jmp mainloop
 
+}
+
+// ------------------------------------------------------------
+//
+AddObj:
+{
+	.var charPtr = Tmp				// 16bit
+	.var attribPtr = Tmp+2			// 16bit
+
+	_set32im(ObjWorkChars, charPtr)
+	_set32im(ObjWorkAttrib, attribPtr)
+
+	.var choffs = (Sprites/64) + 1
+
+	ldz #$00
+	
+	// GOTOX
+	ldx FrameCount
+	lda costable,x
+	sta (charPtr),z
+	lda #$90
+	sta (attribPtr),z
+	inz
+	lda #$00
+	sta (charPtr),z
+	lda #$00
+	sta (attribPtr),z
+	inz
+
+	// Char
+	lda #<choffs
+	sta (charPtr),z
+	lda #$08
+	sta (attribPtr),z
+	inz	
+	lda #>choffs
+	sta (charPtr),z
+	lda #$1f
+	sta (attribPtr),z
+	inz	
+
+	_set32im(ObjWorkChars + LOGICAL_OBJS_SIZE, charPtr)
+	_set32im(ObjWorkAttrib + LOGICAL_OBJS_SIZE, attribPtr)
+
+	.var choffs2 = (Sprites/64) + 2
+
+	ldz #$00
+	
+	// GOTOX
+	ldx FrameCount
+	lda costable,x
+	sta (charPtr),z
+	lda #$90
+	sta (attribPtr),z
+	inz
+	lda #$00
+	sta (charPtr),z
+	lda #$00
+	sta (attribPtr),z
+	inz
+
+	// Char
+	lda #<choffs2
+	sta (charPtr),z
+	lda #$08
+	sta (attribPtr),z
+	inz	
+	lda #>choffs2
+	sta (charPtr),z
+	lda #$1f
+	sta (attribPtr),z
+	inz	
+
+	rts
 }
 
 // ------------------------------------------------------------
@@ -315,6 +416,66 @@ rowLoop:
 
 	rts
 }
+
+// ------------------------------------------------------------
+//
+ClearWorkObjs: {
+// 	.var chr_ptr = Tmp
+// 	.var attrib_ptr = Tmp1
+
+// 	// Clear the RRBIndex list
+// 	_set32im(RRBTileBuffer, chr_ptr)
+// 	_set32im(RRBAttribBuffer, attrib_ptr)
+
+// 	ldx #0
+// !:		
+// 	// Set the RRB count with the number of bytes available on this row
+// 	lda #LayerRRB.DataSize
+// 	sta RRBCount,x
+
+// 	// Set the RRB ptr to the beginning of RRB data for this row
+// 	lda chr_ptr+0
+// 	sta RRBTileRowTableLo,x
+// 	lda chr_ptr+1
+// 	sta RRBTileRowTableHi,x
+
+// 	lda attrib_ptr+0
+// 	sta RRBAttribRowTableLo,x
+// 	lda attrib_ptr+1
+// 	sta RRBAttribRowTableHi,x
+
+// 	// Advance to the next row
+// 	_add16im(chr_ptr, LayerRRB.DataSize, chr_ptr)
+// 	_add16im(attrib_ptr, LayerRRB.DataSize, attrib_ptr)
+
+// 	inx
+// 	cpx #NUM_ROWS
+// 	bne !-
+
+	// Clear the RRB characters using DMA
+	RunDMAJob(Job)
+
+	rts 
+Job:
+	DMAHeader(ClearObjChar>>20, ObjWorkChars>>20)
+	.for(var r=0; r<NUM_ROWS; r++) {
+		// Tile
+		DMACopyJob(
+			ClearObjChar, 
+			ObjWorkChars + (r * LOGICAL_OBJS_SIZE),
+			LOGICAL_OBJS_SIZE,
+			true, false)
+		// Atrib
+		DMACopyJob(
+			ClearObjAttrib,
+			ObjWorkAttrib + (r * LOGICAL_OBJS_SIZE),
+			LOGICAL_OBJS_SIZE,
+			(r!=(NUM_ROWS-1)), false)
+	}
+ .print ("RRBClear DMAjob = " + (* - Job))
+}	
+
+
 
 // ------------------------------------------------------------
 // To update the char / attrib data for the scrolling layers we need to DMA
@@ -521,6 +682,43 @@ UpdateLayerData: {
 		rts
 	}
 
+	UpdateLayerObjs: {
+		_set32im(ObjWorkChars, src_tile_ptr)
+		_set32im(ObjWorkAttrib, src_attrib_ptr)
+
+		_set16im(LOGICAL_OBJS_SIZE, src_stride)
+
+		_set16im(0, src_offset)
+
+		// Copy into Obj layer
+		_set16im(LOGICAL_LAYER_SIZE * NUM_LAYERS, dst_offset)
+
+		_set16im(LOGICAL_OBJS_SIZE, copy_length)
+
+		jsr CopyLayerChunks
+
+		rts
+	}
+
+	UpdateLayerEOL: {
+		_set32im(EOLChar, src_tile_ptr)
+		_set32im(EOLAttrib, src_attrib_ptr)
+
+		// We are copying the same data into each row so don't advance the src ptrs
+		_set16im(0, src_stride)
+
+		_set16im(0, src_offset)
+
+		// Copy into Obj layer
+		_set16im((LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_OBJS_SIZE, dst_offset)
+
+		_set16im(LOGICAL_EOL_SIZE, copy_length)
+
+		jsr CopyLayerChunks
+
+		rts
+	}
+
 	// Loop for each row in both chars and attribs and DMA one screen wide piece of data
 	//
 	CopyLayerChunks: {
@@ -677,6 +875,13 @@ InitPalette: {
 		lda Palette + $020,x 
 		sta $d300,x
 
+		lda Palette + $030,x 	// sprite
+		sta $d110,x
+		lda Palette + $040,x 
+		sta $d210,x
+		lda Palette + $050,x 
+		sta $d310,x
+
 		inx 
 		cpx #$10
 		bne !-
@@ -697,14 +902,46 @@ InitPalette: {
 Chars:
 	.import binary "./ncm_test_chr.bin"
 
+.segment Data "Sprites"
+.align 64
+Sprites:
+	.import binary "./ncm_sprite_chr.bin"
+
 .segment Data "Palettes"
 Palette:
 	.import binary "./ncm_test_pal.bin"
+	.import binary "./ncm_sprite_pal.bin"
 
 sintable:
 	.fill 256, 84 + (sin((i/256) * PI * 2) * 84)
 costable:
 	.fill 256, 84 + (cos((i/256) * PI * 2) * 84)
+
+// ------------------------------------------------------------
+//
+.segment Data "RRB Clear Data"
+ClearObjChar:
+	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
+	{
+		.byte <SCREEN_WIDTH,>SCREEN_WIDTH
+	}
+
+ClearObjAttrib:
+	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
+	{
+		.byte $90,$00
+	}
+
+// ------------------------------------------------------------
+//
+.segment Data "RRB EOL Data"
+EOLChar:
+	.byte <SCREEN_WIDTH,>SCREEN_WIDTH
+	.byte $00,$00
+
+EOLAttrib:
+	.byte $90,$00
+	.byte $08,$0f
 
 // ------------------------------------------------------------
 //
@@ -782,6 +1019,14 @@ AttribRam:
 		}
 	}
 }
+
+// ------------------------------------------------------------
+//
+.segment BSS "Obj Work RAM"
+ObjWorkChars:
+	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+ObjWorkAttrib:
+	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
 
 // ------------------------------------------------------------
 //
