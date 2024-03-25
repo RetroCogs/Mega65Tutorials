@@ -30,7 +30,7 @@
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
 #define H320
-.const SCREEN_WIDTH = 160
+.const SCREEN_WIDTH = 320
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
@@ -49,7 +49,7 @@
 //
 .const LOGICAL_LAYER_SIZE = (2 + (CHARS_WIDE * 2))
 
-.const NUM_LAYERS = 2
+.const NUM_LAYERS = 4
 
 // LOGICAL_OBJS_SIZE is the number of bytes reserved for objs on each row, at a minimum,
 // one objs is a GOTOX + CHAR
@@ -173,8 +173,8 @@ mainloop:
 	// Update the char / attrib data using DMA
 	jsr UpdateLayerData.UpdateLayer1
 	jsr UpdateLayerData.UpdateLayer2
-	// jsr UpdateLayerData.UpdateLayer3
-	// jsr UpdateLayerData.UpdateLayer4
+	jsr UpdateLayerData.UpdateLayer3
+	jsr UpdateLayerData.UpdateLayer4
 
 	// Update RRBObjs using DMA
 	jsr UpdateLayerData.UpdateLayerObjs
