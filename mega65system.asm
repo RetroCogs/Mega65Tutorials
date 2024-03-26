@@ -94,15 +94,6 @@
         and #%00111111
         tsb $d05d
 
-        // Work around VHDL issue
-        // 
-        // If running on real hardware, shift screen left SCALED pixel
-        lda $d60f
-        and #%00100000
-        beq !+
-        _sub16im(charXPos, HPIXELSCALE, charXPos)
-    !:
-
         // TEXTXPOS - Text X Pos
         lda charXPos+0
         sta $d04c
