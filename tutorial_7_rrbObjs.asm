@@ -54,7 +54,9 @@
 // LOGICAL_OBJS_SIZE is the number of bytes reserved for objs on each row, at a minimum,
 // one objs is a GOTOX + CHAR
 //
-.const LOGICAL_OBJS_SIZE = 2 * (4)
+.const NUM_OBJS = 32			// simple implementation of index list, DO NOT INCREASE THIS PAST 64!!!
+
+.const LOGICAL_OBJS_SIZE = 2 * (NUM_OBJS)
 
 // LOGICAL_EOL_SIZE is the end of line marker, this consists of a GOTOX(SCREEN_WIDTH) + CHAR
 // this end of line set are needed to ensure that all of the line is visible as the RRB
@@ -85,6 +87,9 @@
 	Tmp4:			.word $0000,$0000
 
 	FrameCount:		.byte $00
+
+	AnimCount:		.byte $00
+
 	ScrollX1:		.byte $00,$00
 	ScrollX2:		.byte $00,$00
 	ScrollY1:		.byte $00,$00
@@ -200,9 +205,13 @@ mainloop:
 	// Clear the work Obj ram using DMA
 	jsr ClearWorkObjs
 
+	inc AnimCount
+
 	// Add Objs into the work ram here
 	//
-	ldx FrameCount
+	ldx AnimCount
+	ldy #$00
+!:
 	lda sintable,x
 	sta ObjPosX+0
 	lda costable,x
@@ -211,7 +220,21 @@ mainloop:
 	sta ObjPosX+1
 	sta ObjPosY+1
 
+	phx
+	phy
+
 	jsr AddObj
+
+	ply
+	pla
+
+	clc	
+	adc #$06
+	tax
+
+	iny
+	cpy #NUM_OBJS
+	bne !-
 
 	lda #$00
 	sta $d020
@@ -224,7 +247,7 @@ mainloop:
 // ------------------------------------------------------------
 //
 yShiftTable:	.byte 0<<5,7<<5,6<<5,5<<5,4<<5,3<<5,2<<5,1<<5
-yMaskTable:		.byte %11111111,%11111110,%11111100,%11111000,%1111000,%11100000,%11000000,%10000000
+yMaskTable:		.byte %11111111,%11111110,%11111100,%11111000,%11110000,%11100000,%11000000,%10000000
 
 AddObj:
 {
@@ -233,7 +256,6 @@ AddObj:
 
 	.var charIndx = Tmp1+0			// 16bit
 	.var yShift = Tmp1+2			// 8bit
-	.var yRow = Tmp1+3				// 8bit
 
 	.var gotoXmask = Tmp2			// 8bit
 
@@ -245,12 +267,12 @@ AddObj:
 
 	lda ObjPosY+0						// Find sub row y offset (0 - 7)
 	and #$07
-	tax	
+	tay	
 
-	lda yMaskTable,x					// grab the rowMask value
+	lda yMaskTable,y					// grab the rowMask value
 	sta gotoXmask
 
-	lda yShiftTable,x					// grab the yShift value 
+	lda yShiftTable,y					// grab the yShift value 
 	sta yShift
 
 	beq !+								// if (yShift != 0) charIndx--
@@ -268,7 +290,7 @@ AddObj:
 	lsr	
 	lsr	
 	lsr	
-	sta yRow
+	tax									// move yRow into X reg
 	sta $d770 //hw mult A lsb
 	lda #$00
 	sta $d771
@@ -284,7 +306,11 @@ AddObj:
 
 	// Top character, this uses the first mask from the tables above
 	//
-	ldz #$00
+	ldz ObjUsedIndx,x
+	clc
+	lda ObjUsedIndx,x
+	adc #$04
+	sta ObjUsedIndx,x
 
 	// GOTOX
 	lda ObjPosX+0						// char = <xpos,>xpos | yShift
@@ -315,10 +341,15 @@ AddObj:
 	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
 	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
 	_add16im(charIndx, 1, charIndx)
+	inx
 
 	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask
 	//
-	ldz #$00
+	ldz ObjUsedIndx,x
+	clc
+	lda ObjUsedIndx,x
+	adc #$04
+	sta ObjUsedIndx,x
 	
 	// GOTOX
 	lda ObjPosX+0						// char = <xpos,>xpos | yShift
@@ -354,10 +385,15 @@ AddObj:
 	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
 	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
 	_add16im(charIndx, 1, charIndx)
+	inx
 
 	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask
 	//
-	ldz #$00
+	ldz ObjUsedIndx,x
+	clc
+	lda ObjUsedIndx,x
+	adc #$04
+	sta ObjUsedIndx,x
 
 	lda gotoXmask
 	eor #$ff
@@ -373,7 +409,6 @@ AddObj:
 	ora yShift
 	sta (charPtr),z
 	lda gotoXmask
-
 	sta (attribPtr),z
 	inz
 
@@ -531,37 +566,16 @@ rowLoop:
 // ------------------------------------------------------------
 //
 ClearWorkObjs: {
-// 	.var chr_ptr = Tmp
-// 	.var attrib_ptr = Tmp1
+	// Clear the RRBIndex list
+	ldx #0
+!:		
+	// Set the RRB count with the number of bytes available on this row
+	lda #$00
+	sta ObjUsedIndx,x
 
-// 	// Clear the RRBIndex list
-// 	_set32im(RRBTileBuffer, chr_ptr)
-// 	_set32im(RRBAttribBuffer, attrib_ptr)
-
-// 	ldx #0
-// !:		
-// 	// Set the RRB count with the number of bytes available on this row
-// 	lda #LayerRRB.DataSize
-// 	sta RRBCount,x
-
-// 	// Set the RRB ptr to the beginning of RRB data for this row
-// 	lda chr_ptr+0
-// 	sta RRBTileRowTableLo,x
-// 	lda chr_ptr+1
-// 	sta RRBTileRowTableHi,x
-
-// 	lda attrib_ptr+0
-// 	sta RRBAttribRowTableLo,x
-// 	lda attrib_ptr+1
-// 	sta RRBAttribRowTableHi,x
-
-// 	// Advance to the next row
-// 	_add16im(chr_ptr, LayerRRB.DataSize, chr_ptr)
-// 	_add16im(attrib_ptr, LayerRRB.DataSize, attrib_ptr)
-
-// 	inx
-// 	cpx #NUM_ROWS
-// 	bne !-
+	inx
+	cpx #NUM_ROWS
+	bne !-
 
 	// Clear the RRB characters using DMA
 	RunDMAJob(Job)
@@ -1138,6 +1152,9 @@ ObjWorkChars:
 	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
 ObjWorkAttrib:
 	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+
+ObjUsedIndx:
+	.fill NUM_ROWS, $00
 
 // ------------------------------------------------------------
 //
