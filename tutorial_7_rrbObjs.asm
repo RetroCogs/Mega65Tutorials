@@ -96,6 +96,9 @@
 	LayerMasks:		.byte $00,$00,$00,$00
 	YShift:			.byte $00,$00,$00,$00
 
+	ObjPosX:		.byte $00,$00
+	ObjPosY:		.byte $00,$00
+
 // ------------------------------------------------------------
 //
 .segment Code
@@ -199,6 +202,15 @@ mainloop:
 
 	// Add Objs into the work ram here
 	//
+	ldx FrameCount
+	lda sintable,x
+	sta ObjPosX+0
+	lda costable,x
+	sta ObjPosY+0
+	lda #$00
+	sta ObjPosX+1
+	sta ObjPosY+1
+
 	jsr AddObj
 
 	lda #$00
@@ -211,74 +223,166 @@ mainloop:
 
 // ------------------------------------------------------------
 //
+yShiftTable:	.byte 0<<5,7<<5,6<<5,5<<5,4<<5,3<<5,2<<5,1<<5
+yMaskTable:		.byte %11111111,%11111110,%11111100,%11111000,%1111000,%11100000,%11000000,%10000000
+
 AddObj:
 {
 	.var charPtr = Tmp				// 16bit
 	.var attribPtr = Tmp+2			// 16bit
 
-	_set32im(ObjWorkChars, charPtr)
-	_set32im(ObjWorkAttrib, attribPtr)
+	.var gotoXmarker = Tmp1			// 8bit
+	.var charIndx = Tmp1+1			// 16bit
+	.var yShift = Tmp1+3			// 8bit
+
+	.var gotoXmask = Tmp2			// 8bit
+
+	_set16im(ObjWorkChars, charPtr)
+	_set16im(ObjWorkAttrib, attribPtr)
 
 	.var choffs = (Sprites/64) + 1
 
+	_set16im(choffs, charIndx)
+
+	lda #$98
+	sta gotoXmarker
+
+	lda ObjPosY+0
+	and #$07
+	tax	
+
+	// grab the rowMask value
+	lda yMaskTable,x
+	sta gotoXmask
+
+	// grab the yShift value 
+	lda yShiftTable,x
+	sta yShift
+
+	beq !+
+
+	_add16im(charIndx, -1, charIndx)
+
+!:
+
+	// Add ObjPosY >> 3 to charPtr and attribPtr
+	lda ObjPosY+0
+	lsr	
+	lsr	
+	lsr	
+	sta $d770 //hw mult A lsb
+	lda #$00
+	sta $d771
+	sta $d772
+	sta $d776
+	lda #<LOGICAL_OBJS_SIZE //hw mult B lsb
+	sta $d774
+	lda #>LOGICAL_OBJS_SIZE //hw mult B msb
+	sta $d775
+
+	_add16(charPtr, $d778, charPtr)
+	_add16(attribPtr, $d778, attribPtr)
+
 	ldz #$00
 	
 	// GOTOX
-	ldx FrameCount
-	lda costable,x
+	lda ObjPosX+0
 	sta (charPtr),z
-	lda #$90
+	lda #$98
 	sta (attribPtr),z
 	inz
-	lda #$00
+	lda ObjPosX+1
+	ora yShift
 	sta (charPtr),z
-	lda #$00
+	lda gotoXmask
 	sta (attribPtr),z
 	inz
 
 	// Char
-	lda #<choffs
+	lda charIndx+0
 	sta (charPtr),z
 	lda #$08
 	sta (attribPtr),z
 	inz	
-	lda #>choffs
+	lda charIndx+1
 	sta (charPtr),z
 	lda #$1f
 	sta (attribPtr),z
 	inz	
 
-	_set32im(ObjWorkChars + LOGICAL_OBJS_SIZE, charPtr)
-	_set32im(ObjWorkAttrib + LOGICAL_OBJS_SIZE, attribPtr)
+	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
+	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
 
-	.var choffs2 = (Sprites/64) + 2
+	_add16im(charIndx, 1, charIndx)
 
 	ldz #$00
 	
 	// GOTOX
-	ldx FrameCount
-	lda costable,x
+	lda ObjPosX+0
 	sta (charPtr),z
-	lda #$90
+	lda #$98
 	sta (attribPtr),z
 	inz
-	lda #$00
+	lda ObjPosX+1
+	ora yShift
 	sta (charPtr),z
-	lda #$00
+	lda #$ff
 	sta (attribPtr),z
 	inz
 
 	// Char
-	lda #<choffs2
+	lda charIndx+0
 	sta (charPtr),z
 	lda #$08
 	sta (attribPtr),z
 	inz	
-	lda #>choffs2
+	lda charIndx+1
 	sta (charPtr),z
 	lda #$1f
 	sta (attribPtr),z
 	inz	
+
+	lda yShift
+	beq skipLastRow
+
+	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
+	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
+
+	_add16im(charIndx, 1, charIndx)
+
+	lda gotoXmask
+	eor #$ff
+	sta gotoXmask
+
+	ldz #$00
+	
+	// GOTOX
+	lda ObjPosX+0
+	sta (charPtr),z
+	lda #$98
+	sta (attribPtr),z
+	inz
+	lda ObjPosX+1
+	ora yShift
+	sta (charPtr),z
+	lda gotoXmask
+
+	sta (attribPtr),z
+	inz
+
+	// Char
+	lda charIndx+0
+	sta (charPtr),z
+	lda #$08
+	sta (attribPtr),z
+	inz	
+	lda charIndx+1
+	sta (charPtr),z
+	lda #$1f
+	sta (attribPtr),z
+	inz	
+
+skipLastRow:
 
 	rts
 }
