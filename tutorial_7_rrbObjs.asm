@@ -306,8 +306,8 @@ AddObj:
 
 	// Top character, this uses the first mask from the tables above
 	//
-	ldz ObjUsedIndx,x
-	clc
+	ldz ObjUsedIndx,x					// Get the index of the next char to be added to this row
+	clc									// Advance the index by 4 bytes (GOTOX + CHAR)
 	lda ObjUsedIndx,x
 	adc #$04
 	sta ObjUsedIndx,x
@@ -345,8 +345,8 @@ AddObj:
 
 	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask
 	//
-	ldz ObjUsedIndx,x
-	clc
+	ldz ObjUsedIndx,x					// Get the index of the next char to be added to this row
+	clc									// Advance the index by 4 bytes (GOTOX + CHAR)
 	lda ObjUsedIndx,x
 	adc #$04
 	sta ObjUsedIndx,x
@@ -389,8 +389,8 @@ AddObj:
 
 	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask
 	//
-	ldz ObjUsedIndx,x
-	clc
+	ldz ObjUsedIndx,x					// Get the index of the next char to be added to this row
+	clc									// Advance the index by 4 bytes (GOTOX + CHAR)
 	lda ObjUsedIndx,x
 	adc #$04
 	sta ObjUsedIndx,x
