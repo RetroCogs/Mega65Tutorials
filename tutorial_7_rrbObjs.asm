@@ -231,9 +231,9 @@ AddObj:
 	.var charPtr = Tmp				// 16bit
 	.var attribPtr = Tmp+2			// 16bit
 
-	.var gotoXmarker = Tmp1			// 8bit
-	.var charIndx = Tmp1+1			// 16bit
-	.var yShift = Tmp1+3			// 8bit
+	.var charIndx = Tmp1+0			// 16bit
+	.var yShift = Tmp1+2			// 8bit
+	.var yRow = Tmp1+3				// 8bit
 
 	.var gotoXmask = Tmp2			// 8bit
 
@@ -241,35 +241,34 @@ AddObj:
 	_set16im(ObjWorkAttrib, attribPtr)
 
 	.var choffs = (Sprites/64)
-
 	_set16im(choffs, charIndx)			// Start charIndx with first sprite char
 
-	lda #$98
-	sta gotoXmarker
-
-	lda ObjPosY+0
+	lda ObjPosY+0						// Find sub row y offset (0 - 7)
 	and #$07
 	tax	
 
-	// grab the rowMask value
-	lda yMaskTable,x
+	lda yMaskTable,x					// grab the rowMask value
 	sta gotoXmask
 
-	// grab the yShift value 
-	lda yShiftTable,x
+	lda yShiftTable,x					// grab the yShift value 
 	sta yShift
 
-	beq !+
+	beq !+								// if (yShift != 0) charIndx--
 
 	_add16im(charIndx, -1, charIndx)
 
 !:
 
-	// Add ObjPosY >> 3 to charPtr and attribPtr
-	lda ObjPosY+0
+	// Calculate which row data to add this character to, we
+	// are using the MUL hardware here to avoid having a row table.
+	// 
+	// This translates to $d778-A = (ObjPosY>>3) * LOGICAL_OBJS_SIZE
+	//
+	lda ObjPosY+0						// Add ObjPosY >> 3 to charPtr and attribPtr
 	lsr	
 	lsr	
 	lsr	
+	sta yRow
 	sta $d770 //hw mult A lsb
 	lda #$00
 	sta $d771
@@ -280,15 +279,17 @@ AddObj:
 	lda #>LOGICAL_OBJS_SIZE //hw mult B msb
 	sta $d775
 
-	_add16(charPtr, $d778, charPtr)
+	_add16(charPtr, $d778, charPtr)		// Add this offset to char and attrib ptrs
 	_add16(attribPtr, $d778, attribPtr)
 
+	// Top character, this uses the first mask from the tables above
+	//
 	ldz #$00
-	
+
 	// GOTOX
-	lda ObjPosX+0
+	lda ObjPosX+0						// char = <xpos,>xpos | yShift
 	sta (charPtr),z
-	lda #$98
+	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
@@ -310,17 +311,19 @@ AddObj:
 	sta (attribPtr),z
 	inz	
 
+	// Advance to next row and charIndx
 	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
 	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
-
 	_add16im(charIndx, 1, charIndx)
 
+	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask
+	//
 	ldz #$00
 	
 	// GOTOX
-	lda ObjPosX+0
+	lda ObjPosX+0						// char = <xpos,>xpos | yShift
 	sta (charPtr),z
-	lda #$98
+	lda #$90							// attrib = $98 (transparent+gotox), $00
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
@@ -342,24 +345,28 @@ AddObj:
 	sta (attribPtr),z
 	inz	
 
+	// If we have a yShift of 0 we only need to add to 2 rows, skip the last row!
+	//
 	lda yShift
 	beq skipLastRow
 
+	// Advance to next row and charIndx
 	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
 	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
-
 	_add16im(charIndx, 1, charIndx)
+
+	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask
+	//
+	ldz #$00
 
 	lda gotoXmask
 	eor #$ff
 	sta gotoXmask
 
-	ldz #$00
-	
 	// GOTOX
-	lda ObjPosX+0
+	lda ObjPosX+0						// char = <xpos,>xpos | yShift	
 	sta (charPtr),z
-	lda #$98
+	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
