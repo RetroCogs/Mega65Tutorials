@@ -240,9 +240,9 @@ AddObj:
 	_set16im(ObjWorkChars, charPtr)
 	_set16im(ObjWorkAttrib, attribPtr)
 
-	.var choffs = (Sprites/64) + 1
+	.var choffs = (Sprites/64)
 
-	_set16im(choffs, charIndx)
+	_set16im(choffs, charIndx)			// Start charIndx with first sprite char
 
 	lda #$98
 	sta gotoXmarker
