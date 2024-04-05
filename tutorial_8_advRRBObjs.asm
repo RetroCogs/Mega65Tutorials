@@ -20,6 +20,7 @@
 .segmentdef Code [start=$2001, max=$cfff]
 .segmentdef Data [start=$4000, max=$cfff]
 .segmentdef BSS [startAfter="Data", max=$cfff, virtual]
+.segmentdef BSS2 [start=$e000, max=$f400, virtual]
 
 .segmentdef ScreenRam [start=$50000, virtual]
 
@@ -52,11 +53,11 @@
 .const NUM_LAYERS = 4
 
 // LOGICAL_OBJS_SIZE is the number of bytes reserved for objs on each row, at a minimum,
-// one objs is a GOTOX + CHAR
+// one objs is a GOTOX + CHAR (2 words)
 //
-.const NUM_RRBOBJS = 64			// simple implementation of index list, DO NOT INCREASE THIS PAST 64!!!
+.const NUM_RRBOBJWORDS = 120
 
-.const LOGICAL_OBJS_SIZE = 2 * (NUM_RRBOBJS)
+.const LOGICAL_OBJS_SIZE = 2 * (NUM_RRBOBJWORDS)
 
 // LOGICAL_EOL_SIZE is the end of line marker, this consists of a GOTOX(SCREEN_WIDTH) + CHAR
 // this end of line set are needed to ensure that all of the line is visible as the RRB
@@ -82,6 +83,7 @@
 // ------------------------------------------------------------
 //
 .const NUM_OBJS1 = 256
+.const NUM_OBJS2 = 256
 
 // ------------------------------------------------------------
 //
@@ -260,6 +262,49 @@ pp1:
 	bne !-
 
 
+	// Add Objs into the work ram here
+	//
+	ldx #$00
+!:
+	clc
+	lda Objs2PosXLo,x
+	adc Objs2VelX,x
+	sta Objs2PosXLo,x
+
+	clc
+	lda Objs2PosYLo,x
+	adc Objs2VelY,x
+	cmp #$02
+	bcs tt2
+	// less that 8
+	lda #SCREEN_HEIGHT-16
+	bra pp2
+tt2:
+	cmp #SCREEN_HEIGHT-16
+	bcc pp2
+	lda #$02
+pp2:
+	sta Objs2PosYLo,x
+
+	clc
+	lda Objs2PosXLo,x
+	adc #32
+	sta ObjPosX+0
+	lda #$00
+	adc #$00
+	sta ObjPosX+1
+
+	lda Objs2PosYLo,x
+	sta ObjPosY+0
+
+	phx
+	jsr AddObj
+	plx
+
+	inx
+	cpx #NUM_OBJS2
+	bne !-
+
 
 	lda #$00
 	sta $d020
@@ -316,28 +361,32 @@ AddObj:
 	lsr	
 	lsr	
 	tax									// move yRow into X reg
-	sta $d770 //hw mult A lsb
-	lda #$00
-	sta $d771
-	sta $d772
-	sta $d776
-	lda #<LOGICAL_OBJS_SIZE //hw mult B lsb
-	sta $d774
-	lda #>LOGICAL_OBJS_SIZE //hw mult B msb
-	sta $d775
 
-	_add16(charPtr, $d778, charPtr)		// Add this offset to char and attrib ptrs
-	_add16(attribPtr, $d778, attribPtr)
+	ldz #$00
 
 	// Top character, this uses the first mask from the tables above
 	//
-	ldz ObjUsedIndx,x					// Get the index of the next char to be added to this row
-	clc									// Advance the index by 4 bytes (GOTOX + CHAR)
-	lda ObjUsedIndx,x
+	clc
+	lda ObjRowScreenPtrLo,x
+	sta charPtr+0
 	adc #$04
-	sta ObjUsedIndx,x
+	sta ObjRowScreenPtrLo,x
+	lda ObjRowScreenPtrHi,x
+	sta charPtr+1
+	adc #$00
+	sta ObjRowScreenPtrHi,x
+	clc
+	lda ObjRowAttribPtrLo,x
+	sta attribPtr+0
+	adc #$04
+	sta ObjRowAttribPtrLo,x
+	lda ObjRowAttribPtrHi,x
+	sta attribPtr+1
+	adc #$00
+	sta ObjRowAttribPtrHi,x
 
 	// GOTOX
+	ldz #$00
 	lda ObjPosX+0						// char = <xpos,>xpos | yShift
 	sta (charPtr),z
 	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
@@ -360,23 +409,34 @@ AddObj:
 	sta (charPtr),z
 	lda #$1f
 	sta (attribPtr),z
-	inz	
 
 	// Advance to next row and charIndx
-	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
-	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
 	_add16im(charIndx, 1, charIndx)
 	inx
 
 	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask
 	//
-	ldz ObjUsedIndx,x					// Get the index of the next char to be added to this row
-	clc									// Advance the index by 4 bytes (GOTOX + CHAR)
-	lda ObjUsedIndx,x
+	clc
+	lda ObjRowScreenPtrLo,x
+	sta charPtr+0
 	adc #$04
-	sta ObjUsedIndx,x
-	
+	sta ObjRowScreenPtrLo,x
+	lda ObjRowScreenPtrHi,x
+	sta charPtr+1
+	adc #$00
+	sta ObjRowScreenPtrHi,x
+	clc
+	lda ObjRowAttribPtrLo,x
+	sta attribPtr+0
+	adc #$04
+	sta ObjRowAttribPtrLo,x
+	lda ObjRowAttribPtrHi,x
+	sta attribPtr+1
+	adc #$00
+	sta ObjRowAttribPtrHi,x	
+
 	// GOTOX
+	ldz #$00
 	lda ObjPosX+0						// char = <xpos,>xpos | yShift
 	sta (charPtr),z
 	lda #$90							// attrib = $98 (transparent+gotox), $00
@@ -399,7 +459,6 @@ AddObj:
 	sta (charPtr),z
 	lda #$1f
 	sta (attribPtr),z
-	inz	
 
 	// If we have a yShift of 0 we only need to add to 2 rows, skip the last row!
 	//
@@ -407,24 +466,36 @@ AddObj:
 	beq skipLastRow
 
 	// Advance to next row and charIndx
-	_add16im(charPtr, LOGICAL_OBJS_SIZE, charPtr)
-	_add16im(attribPtr, LOGICAL_OBJS_SIZE, attribPtr)
 	_add16im(charIndx, 1, charIndx)
 	inx
 
 	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask
 	//
-	ldz ObjUsedIndx,x					// Get the index of the next char to be added to this row
-	clc									// Advance the index by 4 bytes (GOTOX + CHAR)
-	lda ObjUsedIndx,x
+	clc
+	lda ObjRowScreenPtrLo,x
+	sta charPtr+0
 	adc #$04
-	sta ObjUsedIndx,x
+	sta ObjRowScreenPtrLo,x
+	lda ObjRowScreenPtrHi,x
+	sta charPtr+1
+	adc #$00
+	sta ObjRowScreenPtrHi,x
+	clc
+	lda ObjRowAttribPtrLo,x
+	sta attribPtr+0
+	adc #$04
+	sta ObjRowAttribPtrLo,x
+	lda ObjRowAttribPtrHi,x
+	sta attribPtr+1
+	adc #$00
+	sta ObjRowAttribPtrHi,x
 
 	lda gotoXmask
 	eor #$ff
 	sta gotoXmask
 
 	// GOTOX
+	ldz #$00
 	lda ObjPosX+0						// char = <xpos,>xpos | yShift	
 	sta (charPtr),z
 	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
@@ -447,7 +518,6 @@ AddObj:
 	sta (charPtr),z
 	lda #$1f
 	sta (attribPtr),z
-	inz	
 
 skipLastRow:
 
@@ -591,13 +661,28 @@ rowLoop:
 // ------------------------------------------------------------
 //
 ClearWorkObjs: {
+	.var rowScreenPtr = Tmp		// 16bit
+	.var rowAttribPtr = Tmp+2	// 16bit
+
+	_set16im(ObjWorkChars, rowScreenPtr)
+	_set16im(ObjWorkAttrib, rowAttribPtr)
+
 	// Clear the RRBIndex list
 	ldx #0
 !:		
-	// Set the RRB count with the number of bytes available on this row
-	lda #$00
-	sta ObjUsedIndx,x
+	lda rowScreenPtr+0
+	sta ObjRowScreenPtrLo,x
+	lda rowScreenPtr+1
+	sta ObjRowScreenPtrHi,x
 
+	lda rowAttribPtr+0
+	sta ObjRowAttribPtrLo,x
+	lda rowAttribPtr+1
+	sta ObjRowAttribPtrHi,x
+
+	_add16im(rowScreenPtr, LOGICAL_OBJS_SIZE, rowScreenPtr)
+	_add16im(rowAttribPtr, LOGICAL_OBJS_SIZE, rowAttribPtr)
+	
 	inx
 	cpx #NUM_ROWS
 	bne !-
@@ -1069,7 +1154,7 @@ costable:
 
 // ------------------------------------------------------------
 //
-.segment Data "RRB Clear Data"
+.segment Code "RRB Clear Data"
 ClearObjChar:
 	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
 	{
@@ -1084,7 +1169,7 @@ ClearObjAttrib:
 
 // ------------------------------------------------------------
 //
-.segment Data "RRB EOL Data"
+.segment Code "RRB EOL Data"
 EOLChar:
 	.byte <SCREEN_WIDTH,>SCREEN_WIDTH
 	.byte $00,$00
@@ -1181,6 +1266,15 @@ Objs1VelX:
 Objs1VelY:
 	.fill NUM_OBJS1, 1
 
+Objs2PosXLo:
+	.fill NUM_OBJS2, i * 5
+Objs2PosYLo:
+	.fill NUM_OBJS2, mod((i * 10), SCREEN_HEIGHT-16)
+Objs2VelX:
+	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
+Objs2VelY:
+	.fill NUM_OBJS2, -1
+
 // ------------------------------------------------------------
 //
 .segment BSS "Obj Work RAM"
@@ -1189,7 +1283,15 @@ ObjWorkChars:
 ObjWorkAttrib:
 	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
 
-ObjUsedIndx:
+.segment BSS2 "Obj Work RAM"
+ObjRowScreenPtrLo:
+	.fill NUM_ROWS, $00
+ObjRowScreenPtrHi:
+	.fill NUM_ROWS, $00
+
+ObjRowAttribPtrLo:
+	.fill NUM_ROWS, $00
+ObjRowAttribPtrHi:
 	.fill NUM_ROWS, $00
 
 // ------------------------------------------------------------
