@@ -19,10 +19,12 @@
 .segmentdef Zeropage [start=$02, min=$02, max=$fb, virtual]
 .segmentdef Code [start=$2001, max=$cfff]
 .segmentdef Data [start=$4000, max=$cfff]
-.segmentdef BSS [startAfter="Data", max=$cfff, virtual]
-.segmentdef BSS2 [start=$e000, max=$f400, virtual]
+.segmentdef BSS [start=$e000, max=$f400, virtual]
+
+.segmentdef MappedObjWorkRam [start=$4000, max=$7fff, virtual]
 
 .segmentdef ScreenRam [start=$50000, virtual]
+.segmentdef ObjWorkRam [start=$54000, virtual]
 
 .cpu _45gs02				
 
@@ -35,7 +37,7 @@
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
-.const SCREEN_HEIGHT = 224
+.const SCREEN_HEIGHT = 200
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
@@ -55,7 +57,7 @@
 // LOGICAL_OBJS_SIZE is the number of bytes reserved for objs on each row, at a minimum,
 // one objs is a GOTOX + CHAR (2 words)
 //
-.const NUM_RRBOBJWORDS = 120
+.const NUM_RRBOBJWORDS = 160
 
 .const LOGICAL_OBJS_SIZE = 2 * (NUM_RRBOBJWORDS)
 
@@ -84,6 +86,7 @@
 //
 .const NUM_OBJS1 = 256
 .const NUM_OBJS2 = 256
+.const NUM_OBJS3 = 256
 
 // ------------------------------------------------------------
 //
@@ -218,6 +221,13 @@ mainloop:
 	lda #$00
 	sta ObjPosY+1
 
+    // Map ObjWorkRam (at $54000) into MappedObjWorkRam (at $4000)
+    mapLo(ObjWorkChars, MappedObjWorkChars, $0c)
+    ldy #$00
+    ldz #$00
+	map
+	eom
+
 	// Add Objs into the work ram here
 	//
 	ldx #$00
@@ -305,6 +315,51 @@ pp2:
 	cpx #NUM_OBJS2
 	bne !-
 
+	// Add Objs into the work ram here
+	//
+	ldx #$00
+!:
+	clc
+	lda Objs3PosXLo,x
+	adc Objs3VelX,x
+	sta Objs3PosXLo,x
+
+	clc
+	lda Objs3PosYLo,x
+	adc Objs3VelY,x
+	cmp #$02
+	bcs tt3
+	// less that 8
+	lda #SCREEN_HEIGHT-16
+	bra pp3
+tt3:
+	cmp #SCREEN_HEIGHT-16
+	bcc pp3
+	lda #$02
+pp3:
+	sta Objs3PosYLo,x
+
+	clc
+	lda Objs3PosXLo,x
+	adc #32
+	sta ObjPosX+0
+	lda #$00
+	adc #$00
+	sta ObjPosX+1
+
+	lda Objs3PosYLo,x
+	sta ObjPosY+0
+
+	phx
+	jsr AddObj
+	plx
+
+	inx
+	cpx #NUM_OBJS3
+	bne !-
+
+
+    unmapMemory()
 
 	lda #$00
 	sta $d020
@@ -1275,15 +1330,18 @@ Objs2VelX:
 Objs2VelY:
 	.fill NUM_OBJS2, -1
 
+Objs3PosXLo:
+	.fill NUM_OBJS2, i * 8
+Objs3PosYLo:
+	.fill NUM_OBJS2, mod((i * 10), SCREEN_HEIGHT-16)
+Objs3VelX:
+	.fill NUM_OBJS2, random() > 0.5 ? -2 : 2
+Objs3VelY:
+	.fill NUM_OBJS2, 1
+
 // ------------------------------------------------------------
 //
-.segment BSS "Obj Work RAM"
-ObjWorkChars:
-	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
-ObjWorkAttrib:
-	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
-
-.segment BSS2 "Obj Work RAM"
+.segment BSS "Obj Work Lists"
 ObjRowScreenPtrLo:
 	.fill NUM_ROWS, $00
 ObjRowScreenPtrHi:
@@ -1299,4 +1357,20 @@ ObjRowAttribPtrHi:
 .segment ScreenRam "Screen RAM"
 ScreenRam:
 	.fill (LOGICAL_ROW_SIZE * NUM_ROWS), $00
+
+// ------------------------------------------------------------
+//
+.segment MappedObjWorkRam "Mapped Obj Work RAM"
+MappedObjWorkChars:
+	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+MappedObjWorkAttrib:
+	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+
+// ------------------------------------------------------------
+//
+.segment ObjWorkRam "Obj Work RAM"
+ObjWorkChars:
+	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+ObjWorkAttrib:
+	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
 

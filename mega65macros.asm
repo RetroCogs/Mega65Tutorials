@@ -64,6 +64,38 @@ end:
 	.byte $00,$00	//End of basic terminators
 }
 
+.macro mapHi(source, target, blocks) {
+	.var sourceMB = (source & $ff00000) >> 20
+	.var sourceOffset = ((source & $00fff00) - target)
+	.var sourceOffHi = sourceOffset >> 16
+	.var sourceOffLo = (sourceOffset & $0ff00 ) >> 8
+	.var bitHi = blocks << 4
+
+	ldy #sourceOffLo
+	ldz #[sourceOffHi + bitHi]
+}
+
+.macro mapLo(source, target, blocks) {
+	.var sourceMB = (source & $ff00000) >> 20
+	.var sourceOffset = ((source & $00fff00) - target)
+	.var sourceOffHi = sourceOffset >> 16
+	.var sourceOffLo = (sourceOffset & $0ff00 ) >> 8
+	.var bitLo = blocks << 4
+
+	lda #sourceOffLo
+	ldx #[sourceOffHi + bitLo]
+}
+
+.macro unmapMemory()
+{
+	lda #$00
+	tax
+	tay
+	taz
+	map
+	eom
+}
+
 // _set8im - store an 8bit constant to a memory location
 .macro _set8im(value, dst)
 {
