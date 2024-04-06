@@ -1,14 +1,14 @@
 // ------------------------------------------------------------
 //
-// Tutorial 7 - 8 way parallax scrolling with RRBObjs.
+// Tutorial 7 - 8 way parallax scrolling with Pixies.
 //
-// Shows how to add RRBObjs on top of multiple RRB layers.
+// Shows how to add Pixies on top of multiple RRB layers.
 //
-// Char and Attrib data are DMA'd into the screen RRB layout and the GOTOX position for 
+// Tile and Attrib data are DMA'd into the screen RRB layout and the GOTOX position for 
 // each row is set accordingly.
 //
 //
-.file [name="tutorial_8_advRRBObjs.prg", segments="Code,Data"]
+.file [name="tutorial_8_advPixies.prg", segments="Code,Data"]
 
 // Color RAM is at a fixed base address
 //
@@ -21,10 +21,10 @@
 .segmentdef Data [start=$4000, max=$cfff]
 .segmentdef BSS [start=$e000, max=$f400, virtual]
 
-.segmentdef MappedObjWorkRam [start=$4000, max=$7fff, virtual]
+.segmentdef MappedPixieWorkRam [start=$4000, max=$7fff, virtual]
 
 .segmentdef ScreenRam [start=$50000, virtual]
-.segmentdef ObjWorkRam [start=$54000, virtual]
+.segmentdef PixieWorkRam [start=$54000, virtual]
 
 .cpu _45gs02				
 
@@ -54,12 +54,12 @@
 
 .const NUM_LAYERS = 4
 
-// LOGICAL_OBJS_SIZE is the number of bytes reserved for objs on each row, at a minimum,
-// one objs is a GOTOX + CHAR (2 words)
+// LOGICAL_PIXIE_SIZE is the number of bytes reserved for pixies on each row, at a minimum,
+// one pixie is a GOTOX + CHAR (2 words)
 //
-.const NUM_RRBOBJWORDS = 160
+.const NUM_PIXIEWORDS = 160
 
-.const LOGICAL_OBJS_SIZE = 2 * (NUM_RRBOBJWORDS)
+.const LOGICAL_PIXIE_SIZE = 2 * (NUM_PIXIEWORDS)
 
 // LOGICAL_EOL_SIZE is the end of line marker, this consists of a GOTOX(SCREEN_WIDTH) + CHAR
 // this end of line set are needed to ensure that all of the line is visible as the RRB
@@ -68,7 +68,7 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_OBJS_SIZE + LOGICAL_EOL_SIZE
+.const LOGICAL_ROW_SIZE = (LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_PIXIE_SIZE + LOGICAL_EOL_SIZE
 .const LOGICAL_NUM_ROWS = NUM_ROWS
 
  .print ("LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE)
@@ -114,6 +114,7 @@
 
 	ObjPosX:		.byte $00,$00
 	ObjPosY:		.byte $00,$00
+    ObjChar:        .byte $00,$00
 
 // ------------------------------------------------------------
 //
@@ -189,14 +190,14 @@ mainloop:
 	// Update the GOTOX position for all layers using the offsets calculated above
 	jsr UpdateLayerPositions
 
-	// Update the char / attrib data using DMA
+	// Update the tile / attrib data using DMA
 	jsr UpdateLayerData.UpdateLayer1
 	jsr UpdateLayerData.UpdateLayer2
 	jsr UpdateLayerData.UpdateLayer3
 	jsr UpdateLayerData.UpdateLayer4
 
-	// Update RRBObjs using DMA
-	jsr UpdateLayerData.UpdateLayerObjs
+	// Update Pixie data using DMA
+	jsr UpdateLayerData.UpdateLayerPixies
 
 	lda #$0d
     sta $d020
@@ -213,20 +214,22 @@ mainloop:
 	sta ScrollX2
 	sta ScrollY1
 
-	// Clear the work Obj ram using DMA
-	jsr ClearWorkObjs
+	// Clear the work Pixie ram using DMA
+	jsr ClearWorkPixies
 
 	inc AnimCount
 
 	lda #$00
 	sta ObjPosY+1
 
-    // Map ObjWorkRam (at $54000) into MappedObjWorkRam (at $4000)
-    mapLo(ObjWorkChars, MappedObjWorkChars, $0c)
+    // Map PixieWorkRam (at $54000) into MappedPixieWorkRam (at $4000)
+    mapLo(PixieWorkTiles, MappedPixieWorkTiles, $0c)
     ldy #$00
     ldz #$00
 	map
 	eom
+
+	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
 
 	// Add Objs into the work ram here
 	//
@@ -271,6 +274,7 @@ pp1:
 	cpx #NUM_OBJS1
 	bne !-
 
+	_set16im((Sprites/64)+2, ObjChar)			// Start charIndx with first pixie char
 
 	// Add Objs into the work ram here
 	//
@@ -314,6 +318,8 @@ pp2:
 	inx
 	cpx #NUM_OBJS2
 	bne !-
+
+	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
 
 	// Add Objs into the work ram here
 	//
@@ -376,7 +382,7 @@ yMaskTable:		.byte %11111111,%11111110,%11111100,%11111000,%11110000,%11100000,%
 
 AddObj:
 {
-	.var charPtr = Tmp				// 16bit
+	.var tilePtr = Tmp				// 16bit
 	.var attribPtr = Tmp+2			// 16bit
 
 	.var charIndx = Tmp1+0			// 16bit
@@ -384,11 +390,10 @@ AddObj:
 
 	.var gotoXmask = Tmp2			// 8bit
 
-	_set16im(ObjWorkChars, charPtr)
-	_set16im(ObjWorkAttrib, attribPtr)
+	_set16im(PixieWorkTiles, tilePtr)
+	_set16im(PixieWorkAttrib, attribPtr)
 
-	.var choffs = (Sprites/64)
-	_set16im(choffs, charIndx)			// Start charIndx with first sprite char
+	_set16(ObjChar, charIndx)			// Start charIndx with first pixie char
 
 	lda ObjPosY+0						// Find sub row y offset (0 - 7)
 	and #$07
@@ -402,16 +407,14 @@ AddObj:
 
 	beq !+								// if (yShift != 0) charIndx--
 
-	_add16im(charIndx, -1, charIndx)
+    dew charIndx
 
 !:
 
-	// Calculate which row data to add this character to, we
-	// are using the MUL hardware here to avoid having a row table.
-	// 
-	// This translates to $d778-A = (ObjPosY>>3) * LOGICAL_OBJS_SIZE
-	//
-	lda ObjPosY+0						// Add ObjPosY >> 3 to charPtr and attribPtr
+	// Calculate which row to add pixie data to, put this in X,
+    // we use this to index the row tile / attrib ptrs
+ 	// 
+	lda ObjPosY+0
 	lsr	
 	lsr	
 	lsr	
@@ -419,99 +422,103 @@ AddObj:
 
 	ldz #$00
 
-	// Top character, this uses the first mask from the tables above
+	// Top character, this uses the first mask from the tables above,
+    // grab tile and attrib ptr for this row and advance by the 4 bytes
+    // that we will write per row.
 	//
-	clc
-	lda ObjRowScreenPtrLo,x
-	sta charPtr+0
+	clc                                 // grab and advance tilePtr
+	lda PixieRowScreenPtrLo,x
+	sta tilePtr+0
 	adc #$04
-	sta ObjRowScreenPtrLo,x
-	lda ObjRowScreenPtrHi,x
-	sta charPtr+1
+	sta PixieRowScreenPtrLo,x
+	lda PixieRowScreenPtrHi,x
+	sta tilePtr+1
 	adc #$00
-	sta ObjRowScreenPtrHi,x
-	clc
-	lda ObjRowAttribPtrLo,x
+	sta PixieRowScreenPtrHi,x
+	clc                                 // grab and advance attribPtr
+	lda PixieRowAttribPtrLo,x
 	sta attribPtr+0
 	adc #$04
-	sta ObjRowAttribPtrLo,x
-	lda ObjRowAttribPtrHi,x
+	sta PixieRowAttribPtrLo,x
+	lda PixieRowAttribPtrHi,x
 	sta attribPtr+1
 	adc #$00
-	sta ObjRowAttribPtrHi,x
+	sta PixieRowAttribPtrHi,x
 
 	// GOTOX
 	ldz #$00
-	lda ObjPosX+0						// char = <xpos,>xpos | yShift
-	sta (charPtr),z
+	lda ObjPosX+0						// tile = <xpos,>xpos | yShift
+	sta (tilePtr),z
 	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
 	ora yShift
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda gotoXmask
 	sta (attribPtr),z
 	inz
 
 	// Char
 	lda charIndx+0
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$08
 	sta (attribPtr),z
 	inz	
 	lda charIndx+1
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$1f
 	sta (attribPtr),z
 
 	// Advance to next row and charIndx
-	_add16im(charIndx, 1, charIndx)
+    inw charIndx
 	inx
 
-	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask
+	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask,
+    // grab tile and attrib ptr for this row and advance by the 4 bytes
+    // that we will write per row.
 	//
-	clc
-	lda ObjRowScreenPtrLo,x
-	sta charPtr+0
+	clc                                 // grab and advance tilePtr
+	lda PixieRowScreenPtrLo,x
+	sta tilePtr+0
 	adc #$04
-	sta ObjRowScreenPtrLo,x
-	lda ObjRowScreenPtrHi,x
-	sta charPtr+1
+	sta PixieRowScreenPtrLo,x
+	lda PixieRowScreenPtrHi,x
+	sta tilePtr+1
 	adc #$00
-	sta ObjRowScreenPtrHi,x
-	clc
-	lda ObjRowAttribPtrLo,x
+	sta PixieRowScreenPtrHi,x
+	clc                                 // grab and advance attribPtr
+	lda PixieRowAttribPtrLo,x
 	sta attribPtr+0
 	adc #$04
-	sta ObjRowAttribPtrLo,x
-	lda ObjRowAttribPtrHi,x
+	sta PixieRowAttribPtrLo,x
+	lda PixieRowAttribPtrHi,x
 	sta attribPtr+1
 	adc #$00
-	sta ObjRowAttribPtrHi,x	
+	sta PixieRowAttribPtrHi,x	
 
 	// GOTOX
 	ldz #$00
-	lda ObjPosX+0						// char = <xpos,>xpos | yShift
-	sta (charPtr),z
+	lda ObjPosX+0						// tile = <xpos,>xpos | yShift
+	sta (tilePtr),z
 	lda #$90							// attrib = $98 (transparent+gotox), $00
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
 	ora yShift
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$ff
 	sta (attribPtr),z
 	inz
 
 	// Char
 	lda charIndx+0
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$08
 	sta (attribPtr),z
 	inz	
 	lda charIndx+1
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$1f
 	sta (attribPtr),z
 
@@ -521,29 +528,31 @@ AddObj:
 	beq skipLastRow
 
 	// Advance to next row and charIndx
-	_add16im(charIndx, 1, charIndx)
+    inw charIndx
 	inx
 
-	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask
+	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask,
+    // grab tile and attrib ptr for this row and advance by the 4 bytes
+    // that we will write per row.
 	//
-	clc
-	lda ObjRowScreenPtrLo,x
-	sta charPtr+0
+	clc                                 // grab and advance tilePtr
+	lda PixieRowScreenPtrLo,x
+	sta tilePtr+0
 	adc #$04
-	sta ObjRowScreenPtrLo,x
-	lda ObjRowScreenPtrHi,x
-	sta charPtr+1
+	sta PixieRowScreenPtrLo,x
+	lda PixieRowScreenPtrHi,x
+	sta tilePtr+1
 	adc #$00
-	sta ObjRowScreenPtrHi,x
-	clc
-	lda ObjRowAttribPtrLo,x
+	sta PixieRowScreenPtrHi,x
+	clc                                 // grab and advance tilePtr
+	lda PixieRowAttribPtrLo,x
 	sta attribPtr+0
 	adc #$04
-	sta ObjRowAttribPtrLo,x
-	lda ObjRowAttribPtrHi,x
+	sta PixieRowAttribPtrLo,x
+	lda PixieRowAttribPtrHi,x
 	sta attribPtr+1
 	adc #$00
-	sta ObjRowAttribPtrHi,x
+	sta PixieRowAttribPtrHi,x
 
 	lda gotoXmask
 	eor #$ff
@@ -551,26 +560,26 @@ AddObj:
 
 	// GOTOX
 	ldz #$00
-	lda ObjPosX+0						// char = <xpos,>xpos | yShift	
-	sta (charPtr),z
+	lda ObjPosX+0						// tile = <xpos,>xpos | yShift	
+	sta (tilePtr),z
 	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
 	ora yShift
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda gotoXmask
 	sta (attribPtr),z
 	inz
 
 	// Char
 	lda charIndx+0
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$08
 	sta (attribPtr),z
 	inz	
 	lda charIndx+1
-	sta (charPtr),z
+	sta (tilePtr),z
 	lda #$1f
 	sta (attribPtr),z
 
@@ -608,8 +617,8 @@ shiftMasks: .byte %11111111,%01111111,%00111111,%00011111,%00001111,%00000111,%0
 
 UpdateLayerPositions:
 {
-	.var charLayerPtr = Tmp			// 32bit
-	.var charRowPtr = Tmp1			// 32bit
+	.var tileLayerPtr = Tmp			// 32bit
+	.var tileRowPtr = Tmp1			// 32bit
 
 	.var attribLayerPtr = Tmp2		// 32bit
 	.var attribRowPtr = Tmp3		// 32bit
@@ -617,7 +626,7 @@ UpdateLayerPositions:
 	.var gotoXmarker = Tmp4			// 8bit
 
 	// Start layerPtr at top left GOTOX token
-	_set32im(ScreenRam, charLayerPtr)
+	_set32im(ScreenRam, tileLayerPtr)
 	_set32im(COLOR_RAM, attribLayerPtr)
 
 	// set GotoX info
@@ -670,7 +679,7 @@ UpdateLayerPositions:
 layerLoop:
 
 	// Copy layerPtr to rowPtr
-	_set32(charLayerPtr, charRowPtr)
+	_set32(tileLayerPtr, tileRowPtr)
 	_set32(attribLayerPtr, attribRowPtr)
 
 	// Update GOTOX position for each row in this layer
@@ -680,18 +689,18 @@ rowLoop:
 
 	ldz #$00
 	lda ShiftOffsetsL,x		// Update Byte0 of layer row
-	sta ((charRowPtr)),z
+	sta ((tileRowPtr)),z
 	lda gotoXmarker
 	sta ((attribRowPtr)),z
 	inz
 	lda YShift,x			// Get (FCM char data Y offset)
 	ora ShiftOffsetsH,x		// Update Byte1 of layer row
-	sta ((charRowPtr)),z
+	sta ((tileRowPtr)),z
 	lda LayerMasks,x
 	sta ((attribRowPtr)),z
 
 	// Advance row pointers to the next logical row
-	_add32im(charRowPtr, LOGICAL_ROW_SIZE, charRowPtr)
+	_add32im(tileRowPtr, LOGICAL_ROW_SIZE, tileRowPtr)
 	_add32im(attribRowPtr, LOGICAL_ROW_SIZE, attribRowPtr)
 	
 	iny	
@@ -699,7 +708,7 @@ rowLoop:
 	bne rowLoop
 
 	// Advance layer pointer to the next logical layer
-	_add32im(charLayerPtr, LOGICAL_LAYER_SIZE, charLayerPtr)
+	_add32im(tileLayerPtr, LOGICAL_LAYER_SIZE, tileLayerPtr)
 	_add32im(attribLayerPtr, LOGICAL_LAYER_SIZE, attribLayerPtr)
 
 	lda gotoXmarker
@@ -715,51 +724,51 @@ rowLoop:
 
 // ------------------------------------------------------------
 //
-ClearWorkObjs: {
+ClearWorkPixies: {
 	.var rowScreenPtr = Tmp		// 16bit
 	.var rowAttribPtr = Tmp+2	// 16bit
 
-	_set16im(ObjWorkChars, rowScreenPtr)
-	_set16im(ObjWorkAttrib, rowAttribPtr)
+	_set16im(PixieWorkTiles, rowScreenPtr)
+	_set16im(PixieWorkAttrib, rowAttribPtr)
 
 	// Clear the RRBIndex list
 	ldx #0
 !:		
 	lda rowScreenPtr+0
-	sta ObjRowScreenPtrLo,x
+	sta PixieRowScreenPtrLo,x
 	lda rowScreenPtr+1
-	sta ObjRowScreenPtrHi,x
+	sta PixieRowScreenPtrHi,x
 
 	lda rowAttribPtr+0
-	sta ObjRowAttribPtrLo,x
+	sta PixieRowAttribPtrLo,x
 	lda rowAttribPtr+1
-	sta ObjRowAttribPtrHi,x
+	sta PixieRowAttribPtrHi,x
 
-	_add16im(rowScreenPtr, LOGICAL_OBJS_SIZE, rowScreenPtr)
-	_add16im(rowAttribPtr, LOGICAL_OBJS_SIZE, rowAttribPtr)
+	_add16im(rowScreenPtr, LOGICAL_PIXIE_SIZE, rowScreenPtr)
+	_add16im(rowAttribPtr, LOGICAL_PIXIE_SIZE, rowAttribPtr)
 	
 	inx
 	cpx #NUM_ROWS
 	bne !-
 
-	// Clear the RRB characters using DMA
+	// Clear the working pixie data using DMA
 	RunDMAJob(Job)
 
 	rts 
 Job:
-	DMAHeader(ClearObjChar>>20, ObjWorkChars>>20)
+	DMAHeader(ClearPixieTile>>20, PixieWorkTiles>>20)
 	.for(var r=0; r<NUM_ROWS; r++) {
 		// Tile
 		DMACopyJob(
-			ClearObjChar, 
-			ObjWorkChars + (r * LOGICAL_OBJS_SIZE),
-			LOGICAL_OBJS_SIZE,
+			ClearPixieTile, 
+			PixieWorkTiles + (r * LOGICAL_PIXIE_SIZE),
+			LOGICAL_PIXIE_SIZE,
 			true, false)
 		// Atrib
 		DMACopyJob(
-			ClearObjAttrib,
-			ObjWorkAttrib + (r * LOGICAL_OBJS_SIZE),
-			LOGICAL_OBJS_SIZE,
+			ClearPixieAttrib,
+			PixieWorkAttrib + (r * LOGICAL_PIXIE_SIZE),
+			LOGICAL_PIXIE_SIZE,
 			(r!=(NUM_ROWS-1)), false)
 	}
  .print ("RRBClear DMAjob = " + (* - Job))
@@ -768,9 +777,9 @@ Job:
 
 
 // ------------------------------------------------------------
-// To update the char / attrib data for the scrolling layers we need to DMA
+// To update the tile / attrib data for the scrolling layers we need to DMA
 // data from the Map into the screen, this is done as a DMA for each row,
-// one for chars and one for attribs.
+// one for tiles and one for attribs.
 //
 colTabL: 
 	.fill 32, <(MAP_LOGICAL_SIZE * i)
@@ -825,7 +834,7 @@ UpdateLayerData: {
 		and #$fe
 		sta src_offset+0
 
-		// Copy into char after GOTOX
+		// Copy into tile after GOTOX
 		_set16im(2, dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
@@ -871,7 +880,7 @@ UpdateLayerData: {
 		and #$fe
 		sta src_offset+0
 
-		// Copy into char after GOTOX on the second layer
+		// Copy into tile after GOTOX on the second layer
 		_set16im(2 + LOGICAL_LAYER_SIZE, dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
@@ -917,7 +926,7 @@ UpdateLayerData: {
 		and #$fe
 		sta src_offset+0
 
-		// Copy into char after GOTOX on the second layer
+		// Copy into tile after GOTOX on the second layer
 		_set16im(2 + (LOGICAL_LAYER_SIZE * 2), dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
@@ -962,7 +971,7 @@ UpdateLayerData: {
 		and #$fe
 		sta src_offset+0
 
-		// Copy into char after GOTOX on the second layer
+		// Copy into tile after GOTOX on the second layer
 		_set16im(2 + (LOGICAL_LAYER_SIZE * 3), dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
@@ -972,18 +981,18 @@ UpdateLayerData: {
 		rts
 	}
 
-	UpdateLayerObjs: {
-		_set32im(ObjWorkChars, src_tile_ptr)
-		_set32im(ObjWorkAttrib, src_attrib_ptr)
+	UpdateLayerPixies: {
+		_set32im(PixieWorkTiles, src_tile_ptr)
+		_set32im(PixieWorkAttrib, src_attrib_ptr)
 
-		_set16im(LOGICAL_OBJS_SIZE, src_stride)
+		_set16im(LOGICAL_PIXIE_SIZE, src_stride)
 
 		_set16im(0, src_offset)
 
-		// Copy into Obj layer
+		// Copy into Pixie layer
 		_set16im(LOGICAL_LAYER_SIZE * NUM_LAYERS, dst_offset)
 
-		_set16im(LOGICAL_OBJS_SIZE, copy_length)
+		_set16im(LOGICAL_PIXIE_SIZE, copy_length)
 
 		jsr CopyLayerChunks
 
@@ -991,7 +1000,7 @@ UpdateLayerData: {
 	}
 
 	UpdateLayerEOL: {
-		_set32im(EOLChar, src_tile_ptr)
+		_set32im(EOLTile, src_tile_ptr)
 		_set32im(EOLAttrib, src_attrib_ptr)
 
 		// We are copying the same data into each row so don't advance the src ptrs
@@ -999,8 +1008,8 @@ UpdateLayerData: {
 
 		_set16im(0, src_offset)
 
-		// Copy into Obj layer
-		_set16im((LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_OBJS_SIZE, dst_offset)
+		// Copy into EOL layer
+		_set16im((LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_PIXIE_SIZE, dst_offset)
 
 		_set16im(LOGICAL_EOL_SIZE, copy_length)
 
@@ -1009,7 +1018,7 @@ UpdateLayerData: {
 		rts
 	}
 
-	// Loop for each row in both chars and attribs and DMA one screen wide piece of data
+	// Loop for each row in both tiles and attribs and DMA one screen wide piece of data
 	//
 	CopyLayerChunks: {
 		_set16(copy_length, tileLength)
@@ -1210,14 +1219,14 @@ costable:
 // ------------------------------------------------------------
 //
 .segment Code "RRB Clear Data"
-ClearObjChar:
-	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
+ClearPixieTile:
+	.for(var c = 0;c < LOGICAL_PIXIE_SIZE/2;c++) 
 	{
 		.byte <SCREEN_WIDTH,>SCREEN_WIDTH
 	}
 
-ClearObjAttrib:
-	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
+ClearPixieAttrib:
+	.for(var c = 0;c < LOGICAL_PIXIE_SIZE/2;c++) 
 	{
 		.byte $90,$00
 	}
@@ -1225,7 +1234,7 @@ ClearObjAttrib:
 // ------------------------------------------------------------
 //
 .segment Code "RRB EOL Data"
-EOLChar:
+EOLTile:
 	.byte <SCREEN_WIDTH,>SCREEN_WIDTH
 	.byte $00,$00
 
@@ -1235,9 +1244,9 @@ EOLAttrib:
 
 // ------------------------------------------------------------
 //
-.segment Data "Map Char Data"
+.segment Data "Map Tile Data"
 
-// Map Char Data for top layer
+// Map Tile Data for bottom layer
 //
 MapRam:
 {
@@ -1265,6 +1274,8 @@ MapRam2:
 	}
 }
 
+// Map Tile Data for top layer
+//
 MapRam3:
 {
 	.for(var r = 0;r < MAP_HEIGHT;r++) 
@@ -1295,7 +1306,7 @@ MapRam4:
 //
 .segment Data "Map Attrib Data"
 
-// Map Char Data for top layer
+// Map Attrib Data for all layers because they are all using the same palette index
 //
 AttribRam:
 {
@@ -1341,15 +1352,15 @@ Objs3VelY:
 
 // ------------------------------------------------------------
 //
-.segment BSS "Obj Work Lists"
-ObjRowScreenPtrLo:
+.segment BSS "Pixie Work Lists"
+PixieRowScreenPtrLo:
 	.fill NUM_ROWS, $00
-ObjRowScreenPtrHi:
+PixieRowScreenPtrHi:
 	.fill NUM_ROWS, $00
 
-ObjRowAttribPtrLo:
+PixieRowAttribPtrLo:
 	.fill NUM_ROWS, $00
-ObjRowAttribPtrHi:
+PixieRowAttribPtrHi:
 	.fill NUM_ROWS, $00
 
 // ------------------------------------------------------------
@@ -1360,17 +1371,17 @@ ScreenRam:
 
 // ------------------------------------------------------------
 //
-.segment MappedObjWorkRam "Mapped Obj Work RAM"
-MappedObjWorkChars:
-	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
-MappedObjWorkAttrib:
-	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+.segment MappedPixieWorkRam "Mapped Pixie Work RAM"
+MappedPixieWorkTiles:
+	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
+MappedPixieWorkAttrib:
+	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
 
 // ------------------------------------------------------------
 //
-.segment ObjWorkRam "Obj Work RAM"
-ObjWorkChars:
-	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
-ObjWorkAttrib:
-	.fill (LOGICAL_OBJS_SIZE * NUM_ROWS), $00
+.segment PixieWorkRam "Pixie Work RAM"
+PixieWorkTiles:
+	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
+PixieWorkAttrib:
+	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
 
