@@ -155,6 +155,8 @@ Entry: {
 	_set16im(0, ScrollY1)
 	_set16im(0, ScrollY2)
 
+    jsr CopyMap3to4
+
 	// Main loop
 mainloop:
 	// Wait for (H400) rasterline $07
@@ -1158,6 +1160,44 @@ UpdateLayerData: {
 //
 #import "mega65system.asm"
 
+CopyMap3to4: {
+    .var mapSrcPtr = Tmp       // 16bit
+    .var mapDstPtr = Tmp+2     // 16bit
+
+    _set16im(MapRam3, mapSrcPtr)
+    _set16im(MapRam4, mapDstPtr)
+
+    ldz #$00
+oloop:
+
+    ldx #$00
+iloop:
+
+    ldy #$00
+
+    sec
+    lda (mapSrcPtr),y
+    sbc #$01
+    sta (mapDstPtr),y
+    iny
+    lda (mapSrcPtr),y
+    sbc #$00
+    sta (mapDstPtr),y
+
+    _add16im(mapSrcPtr, 2, mapSrcPtr)
+    _add16im(mapDstPtr, 2, mapDstPtr)
+
+    inx
+    cpx #MAP_WIDTH
+    bne iloop
+
+    inz
+    cpz #MAP_HEIGHT
+    bne oloop
+
+    rts
+}
+
 // ------------------------------------------------------------
 //
 InitPalette: {
@@ -1246,6 +1286,7 @@ EOLAttrib:
 //
 .segment Data "Map Tile Data"
 
+
 // Map Tile Data for bottom layer
 //
 MapRam:
@@ -1254,7 +1295,7 @@ MapRam:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1) + 8)
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1267,7 +1308,7 @@ MapRam2:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&3)*2) + (c&1))) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1) + 8)) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1282,7 +1323,9 @@ MapRam3:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1) + 8)
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1) + 24)
+            .if (random() < 0.5)
+                .eval choffs = (Chars/64)
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1295,7 +1338,7 @@ MapRam4:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&3)*2) + (c&1)) + 8) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1) + 24)) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}
