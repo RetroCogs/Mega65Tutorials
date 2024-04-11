@@ -201,7 +201,7 @@ mainloop:
 	// Update Pixie data using DMA
 	jsr UpdateLayerData.UpdateLayerPixies
 
-	lda #$0d
+	lda #$08
     sta $d020
 
 	inc FrameCount
