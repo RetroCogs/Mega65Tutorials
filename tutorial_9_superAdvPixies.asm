@@ -82,9 +82,9 @@
 
 // ------------------------------------------------------------
 //
-.const NUM_OBJS1 = 128
-.const NUM_OBJS2 = 128
-.const NUM_OBJS3 = 128
+.const NUM_OBJS1 = 256
+.const NUM_OBJS2 = 256
+.const NUM_OBJS3 = 256
 
 // ------------------------------------------------------------
 //
@@ -225,7 +225,7 @@ mainloop:
 	ldx #$00
 !:
 	lda FrameCount
-	and #$01
+	and #$00
 	bne s1
 
 	clc
@@ -239,13 +239,16 @@ mainloop:
 	sta Objs1PosYLo,x
 
 s1:
-	clc
+	sec
 	lda Objs1PosXLo,x
-	adc #32
+	sbc #32
 	sta ObjPosX+0
 	lda #$00
-	adc #$00
+	sbc #$00
 	sta ObjPosX+1
+
+	asl ObjPosX+0
+	rol ObjPosX+1
 
 	lda Objs1PosYLo,x
 	sta ObjPosY+0
@@ -265,7 +268,7 @@ s1:
 	ldx #$00
 !:
 	lda FrameCount
-	and #$01
+	and #$00
 	bne s2
 
 	clc
@@ -278,13 +281,16 @@ s1:
 	adc Objs2VelY,x
 	sta Objs2PosYLo,x
 s2:
-	clc
+	sec
 	lda Objs2PosXLo,x
-	adc #32
+	sbc #32
 	sta ObjPosX+0
 	lda #$00
-	adc #$00
+	sbc #$00
 	sta ObjPosX+1
+
+	asl ObjPosX+0
+	rol ObjPosX+1
 
 	lda Objs2PosYLo,x
 	sta ObjPosY+0
@@ -304,7 +310,7 @@ s2:
 	ldx #$00
 !:
 	lda FrameCount
-	and #$01
+	and #$00
 	bne s3
 
 	clc
@@ -317,13 +323,16 @@ s2:
 	adc Objs3VelY,x
 	sta Objs3PosYLo,x
 s3:
-	clc
+	sec
 	lda Objs3PosXLo,x
-	adc #32
+	sbc #32
 	sta ObjPosX+0
 	lda #$00
-	adc #$00
+	sbc #$00
 	sta ObjPosX+1
+
+	asl ObjPosX+0
+	rol ObjPosX+1
 
 	lda Objs3PosYLo,x
 	sta ObjPosY+0
@@ -422,6 +431,7 @@ AddObj:
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
+	and #$03
 	ora yShift
 	sta (tilePtr),z
 	lda gotoXmask
@@ -478,6 +488,7 @@ middleRow:
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
+	and #$03
 	ora yShift
 	sta (tilePtr),z
 	lda #$ff
@@ -543,6 +554,7 @@ bottomRow:
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
+	and #$03
 	ora yShift
 	sta (tilePtr),z
 	lda gotoXmask
@@ -1267,7 +1279,7 @@ AttribRam:
 // ------------------------------------------------------------
 //
 Objs1PosXLo:
-	.fill NUM_OBJS1, i * 24
+	.fill NUM_OBJS1, i * -28
 Objs1PosYLo:
 	.fill NUM_OBJS1, (i * 10)
 Objs1VelX:
@@ -1276,7 +1288,7 @@ Objs1VelY:
 	.fill NUM_OBJS1, 1
 
 Objs2PosXLo:
-	.fill NUM_OBJS2, i * 32
+	.fill NUM_OBJS2, i * 28
 Objs2PosYLo:
 	.fill NUM_OBJS2, (i * 10)
 Objs2VelX:
@@ -1285,11 +1297,11 @@ Objs2VelY:
 	.fill NUM_OBJS2, -1
 
 Objs3PosXLo:
-	.fill NUM_OBJS2, i * 48
+	.fill NUM_OBJS2, i * 17
 Objs3PosYLo:
 	.fill NUM_OBJS2, (i * 10)
 Objs3VelX:
-	.fill NUM_OBJS2, random() > 0.5 ? -2 : 2
+	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
 Objs3VelY:
 	.fill NUM_OBJS2, 1
 
