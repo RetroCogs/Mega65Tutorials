@@ -8,7 +8,7 @@
 // each row is set accordingly.
 //
 //
-.file [name="tutorial_8_advPixies.prg", segments="Code,Data"]
+.file [name="tutorial_10_flipPixies.prg", segments="Code,Data"]
 
 // Color RAM is at a fixed base address
 //
