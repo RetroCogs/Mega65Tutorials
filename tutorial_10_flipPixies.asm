@@ -84,9 +84,9 @@
 
 // ------------------------------------------------------------
 //
-.const NUM_OBJS1 = 32
-.const NUM_OBJS2 = 32
-.const NUM_OBJS3 = 32
+.const NUM_OBJS1 = 1
+.const NUM_OBJS2 = 1
+.const NUM_OBJS3 = 1
 
 // ------------------------------------------------------------
 //
@@ -408,13 +408,6 @@ AddObj:
 	lda yShiftTable,y					// grab the yShift value 
 	sta yShift
 
-	beq !+								// if (yShift != 0) charIndx--
-
-//    dew charIndx
-
-!:
-
-//	inw charIndx
 	inw charIndx
 	
 	// Calculate which row to add pixie data to, put this in X,

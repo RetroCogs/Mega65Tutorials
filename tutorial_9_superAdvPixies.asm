@@ -82,9 +82,9 @@
 
 // ------------------------------------------------------------
 //
-.const NUM_OBJS1 = 32
-.const NUM_OBJS2 = 32
-.const NUM_OBJS3 = 32
+.const NUM_OBJS1 = 128
+.const NUM_OBJS2 = 128
+.const NUM_OBJS3 = 128
 
 // ------------------------------------------------------------
 //
@@ -225,8 +225,8 @@ mainloop:
 	ldx #$00
 !:
 	lda FrameCount
-	and #$03
-	bne s
+	and #$01
+	bne s1
 
 	clc
 	lda Objs1PosXLo,x
@@ -238,7 +238,7 @@ mainloop:
 	adc Objs1VelY,x
 	sta Objs1PosYLo,x
 
-s:
+s1:
 	clc
 	lda Objs1PosXLo,x
 	adc #32
@@ -247,9 +247,7 @@ s:
 	adc #$00
 	sta ObjPosX+1
 
-	sec
 	lda Objs1PosYLo,x
-	sbc #$10
 	sta ObjPosY+0
 
 	phx
@@ -260,95 +258,83 @@ s:
 	cpx #NUM_OBJS1
 	bne !-
 
-// 	_set16im((Sprites/64)+2, ObjChar)			// Start charIndx with first pixie char
+	_set16im((Sprites/64)+2, ObjChar)			// Start charIndx with first pixie char
 
-// 	// Add Objs into the work ram here
-// 	//
-// 	ldx #$00
-// !:
-// 	clc
-// 	lda Objs2PosXLo,x
-// 	adc Objs2VelX,x
-// 	sta Objs2PosXLo,x
+	// Add Objs into the work ram here
+	//
+	ldx #$00
+!:
+	lda FrameCount
+	and #$01
+	bne s2
 
-// 	clc
-// 	lda Objs2PosYLo,x
-// 	adc Objs2VelY,x
-// 	cmp #$02
-// 	bcs tt2
-// 	// less that 8
-// 	lda #SCREEN_HEIGHT-24
-// 	bra pp2
-// tt2:
-// 	cmp #SCREEN_HEIGHT-24
-// 	bcc pp2
-// 	lda #$02
-// pp2:
-// 	sta Objs2PosYLo,x
+	clc
+	lda Objs2PosXLo,x
+	adc Objs2VelX,x
+	sta Objs2PosXLo,x
 
-// 	clc
-// 	lda Objs2PosXLo,x
-// 	adc #32
-// 	sta ObjPosX+0
-// 	lda #$00
-// 	adc #$00
-// 	sta ObjPosX+1
+	clc
+	lda Objs2PosYLo,x
+	adc Objs2VelY,x
+	sta Objs2PosYLo,x
+s2:
+	clc
+	lda Objs2PosXLo,x
+	adc #32
+	sta ObjPosX+0
+	lda #$00
+	adc #$00
+	sta ObjPosX+1
 
-// 	lda Objs2PosYLo,x
-// 	sta ObjPosY+0
+	lda Objs2PosYLo,x
+	sta ObjPosY+0
 
-// 	phx
-// 	jsr AddObj
-// 	plx
+	phx
+	jsr AddObj
+	plx
 
-// 	inx
-// 	cpx #NUM_OBJS2
-// 	bne !-
+	inx
+	cpx #NUM_OBJS2
+	bne !-
 
-// 	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
+	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
 
-// 	// Add Objs into the work ram here
-// 	//
-// 	ldx #$00
-// !:
-// 	clc
-// 	lda Objs3PosXLo,x
-// 	adc Objs3VelX,x
-// 	sta Objs3PosXLo,x
+	// Add Objs into the work ram here
+	//
+	ldx #$00
+!:
+	lda FrameCount
+	and #$01
+	bne s3
 
-// 	clc
-// 	lda Objs3PosYLo,x
-// 	adc Objs3VelY,x
-// 	cmp #$02
-// 	bcs tt3
-// 	// less that 8
-// 	lda #SCREEN_HEIGHT-24
-// 	bra pp3
-// tt3:
-// 	cmp #SCREEN_HEIGHT-24
-// 	bcc pp3
-// 	lda #$02
-// pp3:
-// 	sta Objs3PosYLo,x
+	clc
+	lda Objs3PosXLo,x
+	adc Objs3VelX,x
+	sta Objs3PosXLo,x
 
-// 	clc
-// 	lda Objs3PosXLo,x
-// 	adc #32
-// 	sta ObjPosX+0
-// 	lda #$00
-// 	adc #$00
-// 	sta ObjPosX+1
+	clc
+	lda Objs3PosYLo,x
+	adc Objs3VelY,x
+	sta Objs3PosYLo,x
+s3:
+	clc
+	lda Objs3PosXLo,x
+	adc #32
+	sta ObjPosX+0
+	lda #$00
+	adc #$00
+	sta ObjPosX+1
 
-// 	lda Objs3PosYLo,x
-// 	sta ObjPosY+0
+	lda Objs3PosYLo,x
+	sta ObjPosY+0
 
-// 	phx
-// 	jsr AddObj
-// 	plx
+	phx
+	jsr AddObj
+	plx
 
-// 	inx
-// 	cpx #NUM_OBJS3
-// 	bne !-
+	inx
+	cpx #NUM_OBJS3
+	bne !-
 
 	lda #$00
 	sta $d020
@@ -393,12 +379,11 @@ AddObj:
     // we use this to index the row tile / attrib ptrs
  	// 
 	lda ObjPosY+0
-	cmp #$80
-	ror	
-	cmp #$80
-	ror	
-	cmp #$80
-	ror	
+	lsr
+	lsr
+	lsr
+	dec
+	dec
 	tax									// move yRow into X reg
 	bmi middleRow
 	cpx #NUM_ROWS
@@ -1282,27 +1267,27 @@ AttribRam:
 // ------------------------------------------------------------
 //
 Objs1PosXLo:
-	.fill NUM_OBJS1, i * 5
+	.fill NUM_OBJS1, i * 24
 Objs1PosYLo:
-	.fill NUM_OBJS1, mod((i * 10), SCREEN_HEIGHT-16)
+	.fill NUM_OBJS1, (i * 10)
 Objs1VelX:
 	.fill NUM_OBJS1, random() > 0.5 ? -1 : 1
 Objs1VelY:
 	.fill NUM_OBJS1, 1
 
 Objs2PosXLo:
-	.fill NUM_OBJS2, i * 5
+	.fill NUM_OBJS2, i * 32
 Objs2PosYLo:
-	.fill NUM_OBJS2, mod((i * 10), SCREEN_HEIGHT-16)
+	.fill NUM_OBJS2, (i * 10)
 Objs2VelX:
 	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
 Objs2VelY:
 	.fill NUM_OBJS2, -1
 
 Objs3PosXLo:
-	.fill NUM_OBJS2, i * 8
+	.fill NUM_OBJS2, i * 48
 Objs3PosYLo:
-	.fill NUM_OBJS2, mod((i * 10), SCREEN_HEIGHT-16)
+	.fill NUM_OBJS2, (i * 10)
 Objs3VelX:
 	.fill NUM_OBJS2, random() > 0.5 ? -2 : 2
 Objs3VelY:
