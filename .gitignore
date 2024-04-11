@@ -1,5 +1,4 @@
 *.vs
 *.prg
-*.bin
 .source.txt
 .DS_Store

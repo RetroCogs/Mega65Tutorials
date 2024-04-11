@@ -248,10 +248,10 @@ mainloop:
 	cmp #$02
 	bcs tt1
 	// less that 8
-	lda #SCREEN_HEIGHT-16
+	lda #SCREEN_HEIGHT-24
 	bra pp1
 tt1:
-	cmp #SCREEN_HEIGHT-16
+	cmp #SCREEN_HEIGHT-24
 	bcc pp1
 	lda #$02
 pp1:
@@ -293,10 +293,10 @@ pp1:
 	cmp #$02
 	bcs tt2
 	// less that 8
-	lda #SCREEN_HEIGHT-16
+	lda #SCREEN_HEIGHT-24
 	bra pp2
 tt2:
-	cmp #SCREEN_HEIGHT-16
+	cmp #SCREEN_HEIGHT-24
 	bcc pp2
 	lda #$02
 pp2:
@@ -338,10 +338,10 @@ pp2:
 	cmp #$02
 	bcs tt3
 	// less that 8
-	lda #SCREEN_HEIGHT-16
+	lda #SCREEN_HEIGHT-24
 	bra pp3
 tt3:
-	cmp #SCREEN_HEIGHT-16
+	cmp #SCREEN_HEIGHT-24
 	bcc pp3
 	lda #$02
 pp3:
@@ -1241,6 +1241,9 @@ InitPalette: {
 Chars:
 	.import binary "./ncm_test_chr.bin"
 
+ClearChar:
+	.fill 64, 0
+
 .segment Data "Sprites"
 .align 64
 Sprites:
@@ -1295,7 +1298,7 @@ MapRam:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&7)*2) + (c&1) + 8)
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1))
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1308,7 +1311,7 @@ MapRam2:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1) + 8)) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1))) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1323,9 +1326,9 @@ MapRam3:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&7)*2) + (c&1) + 24)
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1) + 16)
             .if (random() < 0.5)
-                .eval choffs = (Chars/64)
+                .eval choffs = (ClearChar/64)
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1338,7 +1341,7 @@ MapRam4:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1) + 24)) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1) + 16)) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}
