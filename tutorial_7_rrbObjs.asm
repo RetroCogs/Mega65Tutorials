@@ -1080,7 +1080,7 @@ MapRam:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1))
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1093,7 +1093,7 @@ MapRam2:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&3)*2) + (c&1))) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1))) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1106,7 +1106,7 @@ MapRam3:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1) + 8)
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1) + 16)
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -1119,7 +1119,7 @@ MapRam4:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&3)*2) + (c&1)) + 8) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1)) + 16) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}

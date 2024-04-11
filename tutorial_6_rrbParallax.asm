@@ -431,7 +431,7 @@ UpdateLayerData: {
 	}
 
 	UpdateLayer3: {
-		_set32im(MapRam, src_tile_ptr)
+		_set32im(MapRam3, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
 		_set16im(MAP_LOGICAL_SIZE, src_stride)
@@ -477,7 +477,7 @@ UpdateLayerData: {
 	}
 
 	UpdateLayer4: {
-		_set32im(MapRam2 + MAP_LOGICAL_SIZE, src_tile_ptr)
+		_set32im(MapRam4 + MAP_LOGICAL_SIZE, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
 		_set16im(MAP_LOGICAL_SIZE, src_stride)
@@ -718,7 +718,7 @@ MapRam:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1)) + 8
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1))
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -731,7 +731,33 @@ MapRam2:
 	{
 		.for(var c = 0;c < MAP_WIDTH;c++) 
 		{
-			.var choffs = ((Chars/64) + (((r&3)*2) + (c&1)) + 8) - 1
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1))) - 1
+			//Char index
+			.byte <choffs,>choffs
+		}
+	}
+}
+
+MapRam3:
+{
+	.for(var r = 0;r < MAP_HEIGHT;r++) 
+	{
+		.for(var c = 0;c < MAP_WIDTH;c++) 
+		{
+			.var choffs = (Chars/64) + (((r&7)*2) + (c&1)) + 16
+			//Char index
+			.byte <choffs,>choffs
+		}
+	}
+}
+
+MapRam4:
+{
+	.for(var r = 0;r < MAP_HEIGHT;r++) 
+	{
+		.for(var c = 0;c < MAP_WIDTH;c++) 
+		{
+			.var choffs = ((Chars/64) + (((r&7)*2) + (c&1)) + 16) - 1
 			//Char index
 			.byte <choffs,>choffs
 		}

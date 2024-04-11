@@ -1,6 +1,6 @@
 // ------------------------------------------------------------
 //
-// Tutorial 7 - 8 way parallax scrolling with Pixies.
+// Tutorial 8 - 8 way parallax scrolling with Pixies.
 //
 // Shows how to add Pixies on top of multiple RRB layers.
 //
