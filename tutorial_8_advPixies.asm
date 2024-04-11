@@ -84,9 +84,9 @@
 
 // ------------------------------------------------------------
 //
-.const NUM_OBJS1 = 32
-.const NUM_OBJS2 = 32
-.const NUM_OBJS3 = 32
+.const NUM_OBJS1 = 64
+.const NUM_OBJS2 = 64
+.const NUM_OBJS3 = 64
 
 // ------------------------------------------------------------
 //
@@ -245,16 +245,6 @@ mainloop:
 	clc
 	lda Objs1PosYLo,x
 	adc Objs1VelY,x
-	cmp #$02
-	bcs tt1
-	// less that 8
-	lda #SCREEN_HEIGHT-24
-	bra pp1
-tt1:
-	cmp #SCREEN_HEIGHT-24
-	bcc pp1
-	lda #$02
-pp1:
 	sta Objs1PosYLo,x
 
 	clc
@@ -290,16 +280,6 @@ pp1:
 	clc
 	lda Objs2PosYLo,x
 	adc Objs2VelY,x
-	cmp #$02
-	bcs tt2
-	// less that 8
-	lda #SCREEN_HEIGHT-24
-	bra pp2
-tt2:
-	cmp #SCREEN_HEIGHT-24
-	bcc pp2
-	lda #$02
-pp2:
 	sta Objs2PosYLo,x
 
 	clc
@@ -335,16 +315,6 @@ pp2:
 	clc
 	lda Objs3PosYLo,x
 	adc Objs3VelY,x
-	cmp #$02
-	bcs tt3
-	// less that 8
-	lda #SCREEN_HEIGHT-24
-	bra pp3
-tt3:
-	cmp #SCREEN_HEIGHT-24
-	bcc pp3
-	lda #$02
-pp3:
 	sta Objs3PosYLo,x
 
 	clc
@@ -365,7 +335,6 @@ pp3:
 	inx
 	cpx #NUM_OBJS3
 	bne !-
-
 
     unmapMemory()
 
@@ -392,9 +361,6 @@ AddObj:
 
 	.var gotoXmask = Tmp2			// 8bit
 
-	_set16im(PixieWorkTiles, tilePtr)
-	_set16im(PixieWorkAttrib, attribPtr)
-
 	_set16(ObjChar, charIndx)			// Start charIndx with first pixie char
 
 	lda ObjPosY+0						// Find sub row y offset (0 - 7)
@@ -420,9 +386,12 @@ AddObj:
 	lsr	
 	lsr	
 	lsr	
+	dec 
+	dec 
 	tax									// move yRow into X reg
-
-	ldz #$00
+	bmi middleRow
+	cpx #NUM_ROWS
+	lbcs done
 
 	// Top character, this uses the first mask from the tables above,
     // grab tile and attrib ptr for this row and advance by the 4 bytes
@@ -455,6 +424,7 @@ AddObj:
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
+	and #$03
 	ora yShift
 	sta (tilePtr),z
 	lda gotoXmask
@@ -472,9 +442,13 @@ AddObj:
 	lda #$1f
 	sta (attribPtr),z
 
+middleRow:
 	// Advance to next row and charIndx
     inw charIndx
 	inx
+	bmi bottomRow
+	cpx #NUM_ROWS
+	lbcs done
 
 	// Middle character, yShift is the same as first char but full character is drawn so disable rowmask,
     // grab tile and attrib ptr for this row and advance by the 4 bytes
@@ -507,6 +481,7 @@ AddObj:
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
+	and #$03
 	ora yShift
 	sta (tilePtr),z
 	lda #$ff
@@ -524,14 +499,18 @@ AddObj:
 	lda #$1f
 	sta (attribPtr),z
 
+bottomRow:
 	// If we have a yShift of 0 we only need to add to 2 rows, skip the last row!
 	//
 	lda yShift
-	beq skipLastRow
+	beq done
 
 	// Advance to next row and charIndx
     inw charIndx
 	inx
+	bmi done
+	cpx #NUM_ROWS
+	lbcs done
 
 	// Bottom character, yShift is the same as first char but flip the bits of the gotoXmask,
     // grab tile and attrib ptr for this row and advance by the 4 bytes
@@ -568,6 +547,7 @@ AddObj:
 	sta (attribPtr),z
 	inz
 	lda ObjPosX+1
+	and #$03
 	ora yShift
 	sta (tilePtr),z
 	lda gotoXmask
@@ -585,7 +565,7 @@ AddObj:
 	lda #$1f
 	sta (attribPtr),z
 
-skipLastRow:
+done:
 
 	rts
 }
@@ -1370,29 +1350,29 @@ AttribRam:
 // ------------------------------------------------------------
 //
 Objs1PosXLo:
-	.fill NUM_OBJS1, i * 5
+	.fill NUM_OBJS1, i * -28
 Objs1PosYLo:
-	.fill NUM_OBJS1, mod((i * 10), SCREEN_HEIGHT-16)
+	.fill NUM_OBJS1, (i * 10)
 Objs1VelX:
 	.fill NUM_OBJS1, random() > 0.5 ? -1 : 1
 Objs1VelY:
 	.fill NUM_OBJS1, 1
 
 Objs2PosXLo:
-	.fill NUM_OBJS2, i * 5
+	.fill NUM_OBJS2, i * 28
 Objs2PosYLo:
-	.fill NUM_OBJS2, mod((i * 10), SCREEN_HEIGHT-16)
+	.fill NUM_OBJS2, (i * 10)
 Objs2VelX:
 	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
 Objs2VelY:
 	.fill NUM_OBJS2, -1
 
 Objs3PosXLo:
-	.fill NUM_OBJS2, i * 8
+	.fill NUM_OBJS2, i * 17
 Objs3PosYLo:
-	.fill NUM_OBJS2, mod((i * 10), SCREEN_HEIGHT-16)
+	.fill NUM_OBJS2, (i * 10)
 Objs3VelX:
-	.fill NUM_OBJS2, random() > 0.5 ? -2 : 2
+	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
 Objs3VelY:
 	.fill NUM_OBJS2, 1
 
