@@ -69,7 +69,7 @@
 .const LOGICAL_ROW_SIZE = (LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_PIXIE_SIZE + LOGICAL_EOL_SIZE
 .const LOGICAL_NUM_ROWS = NUM_ROWS
 
- .print ("LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE)
+.print ("LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE)
 
 // ------------------------------------------------------------
 //
@@ -224,10 +224,6 @@ mainloop:
 	//
 	ldx #$00
 !:
-	lda FrameCount
-	and #$00
-	bne s1
-
 	clc
 	lda Objs1PosXLo,x
 	adc Objs1VelX,x
@@ -237,8 +233,8 @@ mainloop:
 	lda Objs1PosYLo,x
 	adc Objs1VelY,x
 	sta Objs1PosYLo,x
+	sta ObjPosY+0
 
-s1:
 	sec
 	lda Objs1PosXLo,x
 	sbc #32
@@ -249,9 +245,6 @@ s1:
 
 	asl ObjPosX+0
 	rol ObjPosX+1
-
-	lda Objs1PosYLo,x
-	sta ObjPosY+0
 
 	phx
 	jsr AddObj
@@ -267,10 +260,6 @@ s1:
 	//
 	ldx #$00
 !:
-	lda FrameCount
-	and #$00
-	bne s2
-
 	clc
 	lda Objs2PosXLo,x
 	adc Objs2VelX,x
@@ -280,7 +269,8 @@ s1:
 	lda Objs2PosYLo,x
 	adc Objs2VelY,x
 	sta Objs2PosYLo,x
-s2:
+	sta ObjPosY+0
+
 	sec
 	lda Objs2PosXLo,x
 	sbc #32
@@ -291,9 +281,6 @@ s2:
 
 	asl ObjPosX+0
 	rol ObjPosX+1
-
-	lda Objs2PosYLo,x
-	sta ObjPosY+0
 
 	phx
 	jsr AddObj
@@ -309,10 +296,6 @@ s2:
 	//
 	ldx #$00
 !:
-	lda FrameCount
-	and #$00
-	bne s3
-
 	clc
 	lda Objs3PosXLo,x
 	adc Objs3VelX,x
@@ -322,7 +305,8 @@ s2:
 	lda Objs3PosYLo,x
 	adc Objs3VelY,x
 	sta Objs3PosYLo,x
-s3:
+	sta ObjPosY+0
+
 	sec
 	lda Objs3PosXLo,x
 	sbc #32
@@ -333,9 +317,6 @@ s3:
 
 	asl ObjPosX+0
 	rol ObjPosX+1
-
-	lda Objs3PosYLo,x
-	sta ObjPosY+0
 
 	phx
 	jsr AddObj
@@ -355,7 +336,6 @@ s3:
 
 // ------------------------------------------------------------
 //
-// old way yShiftTable:	.byte 0<<5,7<<5,6<<5,5<<5,4<<5,3<<5,2<<5,1<<5
 yShiftTable:	.byte (0<<5)|$10,(1<<5)|$10,(2<<5)|$10,(3<<5)|$10,(4<<5)|$10,(5<<5)|$10,(6<<5)|$10,(7<<5)|$10
 yMaskTable:		.byte %11111111,%11111110,%11111100,%11111000,%11110000,%11100000,%11000000,%10000000
 
@@ -368,9 +348,6 @@ AddObj:
 	.var yShift = Tmp1+2			// 8bit
 
 	.var gotoXmask = Tmp2			// 8bit
-
-	_set16im(PixieWorkTiles, tilePtr)
-	_set16im(PixieWorkAttrib, attribPtr)
 
 	_set16(ObjChar, charIndx)			// Start charIndx with first pixie char
 
@@ -391,14 +368,12 @@ AddObj:
 	lsr
 	lsr
 	lsr
-	dec
+	dec									// move up 2 rows to add top clipping
 	dec
 	tax									// move yRow into X reg
 	bmi middleRow
 	cpx #NUM_ROWS
 	lbcs done
-
-	ldz #$00
 
 	// Top character, this uses the first mask from the tables above,
     // grab tile and attrib ptr for this row and advance by the 4 bytes
