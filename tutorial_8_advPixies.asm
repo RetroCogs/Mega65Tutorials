@@ -226,8 +226,7 @@ mainloop:
 
     // Map PixieWorkRam (at $54000) into MappedPixieWorkRam (at $4000)
     mapLo(PixieWorkTiles, MappedPixieWorkTiles, $0c)
-    ldy #$00
-    ldz #$00
+    mapHi(PixieWorkTiles+$4000, MappedPixieWorkTiles+$4000, $03)
 	map
 	eom
 
@@ -1349,6 +1348,8 @@ AttribRam:
 
 // ------------------------------------------------------------
 //
+.segment Code "Obj Data"
+
 Objs1PosXLo:
 	.fill NUM_OBJS1, i * -28
 Objs1PosYLo:

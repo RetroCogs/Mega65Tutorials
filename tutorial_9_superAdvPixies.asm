@@ -19,10 +19,12 @@
 .segmentdef Zeropage [start=$02, min=$02, max=$fb, virtual]
 .segmentdef Code [start=$2001, max=$cfff]
 .segmentdef Data [start=$4000, max=$cfff]
-.segmentdef PixieWorkRam [start=$8000, max=$bfff, virtual]
 .segmentdef BSS [start=$e000, max=$f400, virtual]
 
+.segmentdef MappedPixieWorkRam [start=$4000, max=$7fff, virtual]
+
 .segmentdef ScreenRam [start=$50000, virtual]
+.segmentdef PixieWorkRam [start=$54000, virtual]
 
 .cpu _45gs02				
 
@@ -218,6 +220,12 @@ mainloop:
 	lda #$00
 	sta ObjPosY+1
 
+    // Map PixieWorkRam (at $54000) into MappedPixieWorkRam (at $4000)
+    mapLo(PixieWorkTiles, MappedPixieWorkTiles, $0c)
+    mapHi(PixieWorkTiles+$4000, MappedPixieWorkTiles+$4000, $03)
+	map
+	eom
+
 	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
 
 	// Add Objs into the work ram here
@@ -325,6 +333,8 @@ mainloop:
 	inx
 	cpx #NUM_OBJS3
 	bne !-
+
+    unmapMemory()
 
 	lda #$00
 	sta $d020
@@ -1256,6 +1266,8 @@ AttribRam:
 
 // ------------------------------------------------------------
 //
+.segment Code "Obj Data"
+
 Objs1PosXLo:
 	.fill NUM_OBJS1, i * -28
 Objs1PosYLo:
@@ -1301,6 +1313,14 @@ PixieRowAttribPtrHi:
 .segment ScreenRam "Screen RAM"
 ScreenRam:
 	.fill (LOGICAL_ROW_SIZE * NUM_ROWS), $00
+
+// ------------------------------------------------------------
+//
+.segment MappedPixieWorkRam "Mapped Pixie Work RAM"
+MappedPixieWorkTiles:
+	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
+MappedPixieWorkAttrib:
+	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
 
 // ------------------------------------------------------------
 //
