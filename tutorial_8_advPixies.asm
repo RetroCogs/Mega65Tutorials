@@ -84,9 +84,9 @@
 
 // ------------------------------------------------------------
 //
-.const NUM_OBJS1 = 64
-.const NUM_OBJS2 = 64
-.const NUM_OBJS3 = 64
+.const NUM_OBJS1 = 256
+.const NUM_OBJS2 = 256
+.const NUM_OBJS3 = 256
 
 // ------------------------------------------------------------
 //
@@ -156,6 +156,9 @@ Entry: {
 	_set16im(0, ScrollY2)
 
     jsr CopyMap3to4
+
+	jsr InitObjData
+
 
 	// Main loop
 mainloop:
@@ -343,6 +346,116 @@ mainloop:
 
 	jmp mainloop
 
+}
+
+// ------------------------------------------------------------
+//
+InitObjData:
+{
+    .var xpos = Tmp       // 8bit
+    .var ypos = Tmp+2     // 8bit
+
+	// Init Obj group 1
+	//
+	//
+	_set8im(0, xpos)
+	_set8im(0, ypos)
+
+	ldx #$00
+iloop1:
+	lda xpos
+	sta Objs1PosXLo,x
+	lda ypos
+	sta Objs1PosYLo,x
+	lda #1
+	sta Objs1VelY,x
+
+	txa
+	and #$01
+	bne ip1
+	lda #$ff
+	bra id1
+ip1:
+	lda #$01
+id1:
+	sta Objs1VelX,x
+
+	_add8im(xpos, -28, xpos)
+	_add8im(ypos, 10, ypos)
+
+	inx
+	cpx #NUM_OBJS1
+	bne iloop1
+
+
+	// Init Obj group 2
+	//
+	//
+	_set8im(0, xpos)
+	_set8im(0, ypos)
+
+	ldx #$00
+iloop2:
+	lda xpos
+	sta Objs2PosXLo,x
+	lda ypos
+	sta Objs2PosYLo,x
+	lda #$ff
+	sta Objs2VelY,x
+
+	txa
+	and #$01
+	bne ip2
+	lda #$ff
+	bra id2
+ip2:
+	lda #$01
+id2:
+	sta Objs2VelX,x
+
+	_add8im(xpos, 28, xpos)
+	_add8im(ypos, 10, ypos)
+
+	inx
+	cpx #NUM_OBJS2
+	bne iloop2
+
+
+	// Init Obj group 2
+	//
+	//
+	_set8im(0, xpos)
+	_set8im(0, ypos)
+
+	ldx #$00
+iloop3:
+	lda xpos
+	sta Objs3PosXLo,x
+	lda ypos
+	sta Objs3PosYLo,x
+	lda #1
+	sta Objs3VelY,x
+
+	txa
+	and #$01
+	bne ip3
+	lda #$fe
+	bra id3
+ip3:
+	lda #$02
+id3:
+	sta Objs3VelX,x
+
+	_add8im(xpos, 17, xpos)
+	_add8im(ypos, 10, ypos)
+
+	inx
+	cpx #NUM_OBJS3
+	bne iloop3
+
+
+
+	rts
 }
 
 // ------------------------------------------------------------
@@ -1348,34 +1461,34 @@ AttribRam:
 
 // ------------------------------------------------------------
 //
-.segment Code "Obj Data"
+.segment BSS "Obj Data"
 
 Objs1PosXLo:
-	.fill NUM_OBJS1, i * -28
+	.fill NUM_OBJS1, 0
 Objs1PosYLo:
-	.fill NUM_OBJS1, (i * 10)
+	.fill NUM_OBJS1, 0
 Objs1VelX:
-	.fill NUM_OBJS1, random() > 0.5 ? -1 : 1
+	.fill NUM_OBJS1, 0
 Objs1VelY:
-	.fill NUM_OBJS1, 1
+	.fill NUM_OBJS1, 0
 
 Objs2PosXLo:
-	.fill NUM_OBJS2, i * 28
+	.fill NUM_OBJS2, 0
 Objs2PosYLo:
-	.fill NUM_OBJS2, (i * 10)
+	.fill NUM_OBJS2, 0
 Objs2VelX:
-	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
+	.fill NUM_OBJS2, 0
 Objs2VelY:
-	.fill NUM_OBJS2, -1
+	.fill NUM_OBJS2, 0
 
 Objs3PosXLo:
-	.fill NUM_OBJS2, i * 17
+	.fill NUM_OBJS2, 0
 Objs3PosYLo:
-	.fill NUM_OBJS2, (i * 10)
+	.fill NUM_OBJS2, 0
 Objs3VelX:
-	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
+	.fill NUM_OBJS2, 0
 Objs3VelY:
-	.fill NUM_OBJS2, 1
+	.fill NUM_OBJS2, 0
 
 // ------------------------------------------------------------
 //
