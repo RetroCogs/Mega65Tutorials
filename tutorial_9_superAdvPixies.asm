@@ -236,8 +236,12 @@ mainloop:
 !:
 	clc
 	lda Objs1PosXLo,x
-	adc Objs1VelX,x
+	adc Objs1VelXLo,x
 	sta Objs1PosXLo,x
+	lda Objs1PosXHi,x
+	adc Objs1VelXHi,x
+	and #$01
+	sta Objs1PosXHi,x
 
 	clc
 	lda Objs1PosYLo,x
@@ -247,14 +251,11 @@ mainloop:
 
 	sec
 	lda Objs1PosXLo,x
-	sbc #32
+	sbc #$20
 	sta ObjPosX+0
-	lda #$00
+	lda Objs1PosXHi,x
 	sbc #$00
 	sta ObjPosX+1
-
-	asl ObjPosX+0
-	rol ObjPosX+1
 
 	phx
 	jsr AddObj
@@ -272,8 +273,12 @@ mainloop:
 !:
 	clc
 	lda Objs2PosXLo,x
-	adc Objs2VelX,x
+	adc Objs2VelXLo,x
 	sta Objs2PosXLo,x
+	lda Objs2PosXHi,x
+	adc Objs2VelXHi,x
+	and #$01
+	sta Objs2PosXHi,x
 
 	clc
 	lda Objs2PosYLo,x
@@ -283,14 +288,11 @@ mainloop:
 
 	sec
 	lda Objs2PosXLo,x
-	sbc #32
+	sbc #$20
 	sta ObjPosX+0
-	lda #$00
+	lda Objs2PosXHi,x
 	sbc #$00
 	sta ObjPosX+1
-
-	asl ObjPosX+0
-	rol ObjPosX+1
 
 	phx
 	jsr AddObj
@@ -298,42 +300,6 @@ mainloop:
 
 	inx
 	cpx #NUM_OBJS2
-	bne !-
-
-	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
-
-	// Add Objs into the work ram here
-	//
-	ldx #$00
-!:
-	clc
-	lda Objs3PosXLo,x
-	adc Objs3VelX,x
-	sta Objs3PosXLo,x
-
-	clc
-	lda Objs3PosYLo,x
-	adc Objs3VelY,x
-	sta Objs3PosYLo,x
-	sta ObjPosY+0
-
-	sec
-	lda Objs3PosXLo,x
-	sbc #32
-	sta ObjPosX+0
-	lda #$00
-	sbc #$00
-	sta ObjPosX+1
-
-	asl ObjPosX+0
-	rol ObjPosX+1
-
-	phx
-	jsr AddObj
-	plx
-
-	inx
-	cpx #NUM_OBJS3
 	bne !-
 
     unmapMemory()
@@ -350,19 +316,21 @@ mainloop:
 //
 InitObjData:
 {
-    .var xpos = Tmp       // 8bit
+    .var xpos = Tmp       // 16bit
     .var ypos = Tmp+2     // 8bit
 
 	// Init Obj group 1
 	//
 	//
-	_set8im(0, xpos)
+	_set16im(0, xpos)
 	_set8im(0, ypos)
 
 	ldx #$00
 iloop1:
 	lda xpos
 	sta Objs1PosXLo,x
+	lda xpos+1
+	sta Objs1PosXHi,x
 	lda ypos
 	sta Objs1PosYLo,x
 	lda #1
@@ -372,14 +340,19 @@ iloop1:
 	and #$01
 	bne ip1
 	lda #$ff
+	sta Objs1VelXLo,x
+	sta Objs1VelXHi,x
 	bra id1
 ip1:
 	lda #$01
+	sta Objs1VelXLo,x
+	lda #$00
+	sta Objs1VelXHi,x
 id1:
-	sta Objs1VelX,x
 
-	_add8im(xpos, -28, xpos)
-	_add8im(ypos, 10, ypos)
+	_add16im(xpos, -14, xpos)
+	_and16im(xpos, $1ff, xpos)
+	_add8im(ypos, 5, ypos)
 
 	inx
 	cpx #NUM_OBJS1
@@ -389,13 +362,15 @@ id1:
 	// Init Obj group 2
 	//
 	//
-	_set8im(0, xpos)
+	_set16im(0, xpos)
 	_set8im(0, ypos)
 
 	ldx #$00
 iloop2:
 	lda xpos
 	sta Objs2PosXLo,x
+	lda xpos+1
+	sta Objs2PosXHi,x
 	lda ypos
 	sta Objs2PosYLo,x
 	lda #$ff
@@ -405,51 +380,23 @@ iloop2:
 	and #$01
 	bne ip2
 	lda #$ff
+	sta Objs2VelXLo,x
+	sta Objs2VelXHi,x
 	bra id2
 ip2:
 	lda #$01
+	sta Objs2VelXLo,x
+	lda #$00
+	sta Objs2VelXHi,x
 id2:
-	sta Objs2VelX,x
 
-	_add8im(xpos, 28, xpos)
-	_add8im(ypos, 10, ypos)
+	_add16im(xpos, 14, xpos)
+	_and16im(xpos, $1ff, xpos)
+	_add8im(ypos, 5, ypos)
 
 	inx
 	cpx #NUM_OBJS2
 	bne iloop2
-
-
-	// Init Obj group 2
-	//
-	//
-	_set8im(0, xpos)
-	_set8im(0, ypos)
-
-	ldx #$00
-iloop3:
-	lda xpos
-	sta Objs3PosXLo,x
-	lda ypos
-	sta Objs3PosYLo,x
-	lda #1
-	sta Objs3VelY,x
-
-	txa
-	and #$01
-	bne ip3
-	lda #$fe
-	bra id3
-ip3:
-	lda #$02
-id3:
-	sta Objs3VelX,x
-
-	_add8im(xpos, 17, xpos)
-	_add8im(ypos, 10, ypos)
-
-	inx
-	cpx #NUM_OBJS3
-	bne iloop3
 
 	rts
 }
@@ -1379,31 +1326,31 @@ AttribRam:
 .segment BSS "Obj Data"
 
 Objs1PosXLo:
-	.fill NUM_OBJS1, i * -28
+	.fill NUM_OBJS1, 0
+Objs1PosXHi:
+	.fill NUM_OBJS1, 0
 Objs1PosYLo:
-	.fill NUM_OBJS1, (i * 10)
-Objs1VelX:
-	.fill NUM_OBJS1, random() > 0.5 ? -1 : 1
+	.fill NUM_OBJS1, 0
+Objs1VelXLo:
+	.fill NUM_OBJS1, 0
+Objs1VelXHi:
+	.fill NUM_OBJS1, 0
 Objs1VelY:
-	.fill NUM_OBJS1, 1
+	.fill NUM_OBJS1, 0
 
 Objs2PosXLo:
-	.fill NUM_OBJS2, i * 28
+	.fill NUM_OBJS2, 0
+Objs2PosXHi:
+	.fill NUM_OBJS2, 0
 Objs2PosYLo:
-	.fill NUM_OBJS2, (i * 10)
-Objs2VelX:
-	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
+	.fill NUM_OBJS2, 0
+Objs2VelXLo:
+	.fill NUM_OBJS2, 0
+Objs2VelXHi:
+	.fill NUM_OBJS2, 0
 Objs2VelY:
-	.fill NUM_OBJS2, -1
+	.fill NUM_OBJS2, 0
 
-Objs3PosXLo:
-	.fill NUM_OBJS2, i * 17
-Objs3PosYLo:
-	.fill NUM_OBJS2, (i * 10)
-Objs3VelX:
-	.fill NUM_OBJS2, random() > 0.5 ? -1 : 1
-Objs3VelY:
-	.fill NUM_OBJS2, 1
 
 // ------------------------------------------------------------
 //
