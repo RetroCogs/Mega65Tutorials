@@ -120,8 +120,9 @@ mainloop:
 // ------------------------------------------------------------
 //
 InitPalette: {
-		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
-		lda #%00000000 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
+		lda $d070
+		and #%00111111
+		ora #%00000000
 		sta $d070 
 
 		ldx #$00
@@ -142,6 +143,35 @@ InitPalette: {
 		sta $d100
 		sta $d200
 		sta $d300
+
+		lda $d070
+		and #%00111111
+		ora #%01000000
+		sta $d070 
+
+		ldx #$00
+	!:
+		lda Palette + $000,x 	// background
+		sta $d100,x
+		lda Palette + $000,x 
+		sta $d200,x
+		lda Palette + $000,x 
+		sta $d300,x
+
+		inx 
+		cpx #$00
+		bne !-
+
+		// Ensure index 0 is black
+		lda #$00
+		sta $d100
+		sta $d200
+		sta $d300
+
+		lda $d070
+		and #%11001100
+		ora #%00000001
+		sta $d070 
 
 		rts
 }
@@ -196,13 +226,20 @@ COLOR_BASE:
 {
 	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
 	{
+		.var altpal = $00
+		.if((r & 8) != 0)
+		{
+			// Byte0bit5=Use Alt Palette
+			.eval altpal = $20
+		}
+
 		//GOTOX marker - Byte0bit4=GOTOXMarker
-		.byte $10,$00
+		.byte $10+altpal+$00,%10101010
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			// Byte1bit0-3 = Colour 15 index
-			.byte $00,$00
+			// Byte1bit0-7 = Colour 255 index
+			.byte $00,$ff
 		}
 	}
 }

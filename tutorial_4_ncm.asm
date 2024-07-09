@@ -87,10 +87,6 @@ Entry: {
 	jsr InitPalette
 	jsr CopyColors
 
-	// Enable VIC3 ATTR register to enable 8bit color
-	lda #$20			//Set bit5=ATTR
-	tsb $d031
-
 	lda #$00
 	sta $d020
 	sta $d021
@@ -150,14 +146,14 @@ InitPalette: {
 
 		lda $d070
 		and #%00111111
-		ora #%10000000
+		ora #%01000000
 		sta $d070 
 
 		ldx #$00
 	!:
 		lda Palette + $020,x 	// background
 		sta $d100,x
-		lda Palette + $010,x 
+		lda Palette + $000,x 
 		sta $d200,x
 		lda Palette + $000,x 
 		sta $d300,x
@@ -174,7 +170,7 @@ InitPalette: {
 
 		lda $d070
 		and #%11001100
-		ora #%00000010
+		ora #%00000001
 		sta $d070 
 
 		rts
@@ -237,13 +233,13 @@ COLOR_BASE:
 		}
 
 		//GOTOX marker - Byte0bit4=GOTOXMarker
-		.byte $10,$00
+		.byte $10,altpal
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
 			// Byte0bit3 = NCM
 			// Byte1bit0-3 = Colour 15 index
-			.byte $08,altpal
+			.byte $08,$0f
 		}
 	}
 }
