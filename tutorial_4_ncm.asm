@@ -88,8 +88,8 @@ Entry: {
 	jsr CopyColors
 
 	// Enable VIC3 ATTR register to enable 8bit color
-	// lda #$20			//Clear bit5=ATTR
-	// tsb $d031
+	lda #$20			//Set bit5=ATTR
+	tsb $d031
 
 	lda #$00
 	sta $d020
@@ -124,8 +124,9 @@ mainloop:
 // ------------------------------------------------------------
 //
 InitPalette: {
-		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
-		lda #%00000001 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
+		lda $d070
+		and #%00111111
+		ora #%00000000
 		sta $d070 
 
 		ldx #$00
@@ -147,8 +148,9 @@ InitPalette: {
 		sta $d200
 		sta $d300
 
-		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
-		lda #%10000010 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
+		lda $d070
+		and #%00111111
+		ora #%10000000
 		sta $d070 
 
 		ldx #$00
@@ -170,6 +172,10 @@ InitPalette: {
 		sta $d200
 		sta $d300
 
+		lda $d070
+		and #%11001100
+		ora #%00000010
+		sta $d070 
 
 		rts
 }
