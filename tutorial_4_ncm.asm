@@ -87,6 +87,10 @@ Entry: {
 	jsr InitPalette
 	jsr CopyColors
 
+	// Enable VIC3 ATTR register to enable 8bit color
+	// lda #$20			//Clear bit5=ATTR
+	// tsb $d031
+
 	lda #$00
 	sta $d020
 	sta $d021
@@ -121,7 +125,7 @@ mainloop:
 //
 InitPalette: {
 		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
-		lda #%00000000 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
+		lda #%00000001 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
 		sta $d070 
 
 		ldx #$00
@@ -142,6 +146,30 @@ InitPalette: {
 		sta $d100
 		sta $d200
 		sta $d300
+
+		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
+		lda #%10000010 //Edit=%00, Text = %00, Sprite = %00, Alt = %00
+		sta $d070 
+
+		ldx #$00
+	!:
+		lda Palette + $020,x 	// background
+		sta $d100,x
+		lda Palette + $010,x 
+		sta $d200,x
+		lda Palette + $000,x 
+		sta $d300,x
+
+		inx 
+		cpx #$10
+		bne !-
+
+		// Ensure index 0 is black
+		lda #$00
+		sta $d100
+		sta $d200
+		sta $d300
+
 
 		rts
 }
@@ -182,7 +210,7 @@ SCREEN_BASE:
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&3)*2) + (c&1))
+			.var choffs = (Chars/64) + (((r&3)*2) + (c&1)) + 16
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -196,6 +224,12 @@ COLOR_BASE:
 {
 	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
 	{
+		.var altpal = $00
+		.if((r & 4) != 0)
+		{
+			.eval altpal = $60
+		}
+
 		//GOTOX marker - Byte0bit4=GOTOXMarker
 		.byte $10,$00
 
@@ -203,7 +237,7 @@ COLOR_BASE:
 		{
 			// Byte0bit3 = NCM
 			// Byte1bit0-3 = Colour 15 index
-			.byte $08,$00
+			.byte $08,altpal
 		}
 	}
 }
