@@ -6,7 +6,7 @@
 // and TextYPos and then calculating the address of the screen to set into
 // ScreenPtr and ColorPtr
 //
-.file [name="tutorial_3_fcm.prg", segments="Code,Data"]
+.file [name="tutorial_3a_fcm_rrb.prg", segments="Code,Data"]
 
 // Color RAM is at a fixed base address
 //
@@ -47,7 +47,7 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2))
+.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2)) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2) + (2)
 .const LOGICAL_NUM_ROWS = NUM_ROWS * NUM_SCREENS_HIGH
 
 .print "NUM_CHARS = " + LOGICAL_ROW_SIZE / 2
@@ -139,10 +139,10 @@ InitPalette: {
 		bne !-
 
 		// Ensure index 0 is black
-		lda #$00
-		sta $d100
-		sta $d200
-		sta $d300
+		// lda #$00
+		// sta $d100
+		// sta $d200
+		// sta $d300
 
 		lda $d070
 		and #%00111111
@@ -163,10 +163,10 @@ InitPalette: {
 		bne !-
 
 		// Ensure index 0 is black
-		lda #$00
-		sta $d100
-		sta $d200
-		sta $d300
+		// lda #$00
+		// sta $d100
+		// sta $d200
+		// sta $d300
 
 		lda $d070
 		and #%11001100
@@ -205,6 +205,11 @@ Palette:
 .segment Data "ScreenData"
 SCREEN_BASE:
 {
+    .var scrpos = SCREEN_WIDTH/2 - 20
+    .var scrpos2 = SCREEN_WIDTH/2 - 8
+    .var scrpos3 = SCREEN_WIDTH/2 + 8
+    .var scrpos4 = SCREEN_WIDTH/2 + 20
+
 	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
 	{
 		//GOTOX position
@@ -216,6 +221,32 @@ SCREEN_BASE:
 			//Char index
 			.byte <choffs,>choffs
 		}
+
+        .var aroffs = (Chars/64) + 64
+
+		//GOTOX position
+		.byte <scrpos,>scrpos
+        //Char index
+        .byte <aroffs,>aroffs
+
+		//GOTOX position
+		.byte <scrpos2,>scrpos2
+        //Char index
+        .byte <aroffs,>aroffs
+
+		//GOTOX position
+		.byte <scrpos3,>scrpos3
+        //Char index
+        .byte <aroffs,>aroffs
+
+		//GOTOX position
+		.byte <scrpos4,>scrpos4
+        //Char index
+        .byte <aroffs,>aroffs
+
+        // End of Line, place a GOTOX marker at SCREEN_WIDTH
+		//GOTOX position
+		.byte <SCREEN_WIDTH,>SCREEN_WIDTH
 	}
 }
 
@@ -243,6 +274,32 @@ COLOR_BASE:
 			// Byte1bit0-7 = Colour 255 index
 			.byte $00,$ff
 		}
+
+		//GOTOX marker - Byte0bit4=GOTOXMarker
+		.byte $10,$00
+        // Byte1bit0-7 = Colour 255 index
+        .byte $00,$ff
+
+		//GOTOX marker - byte0bit7=Transparent, Byte0bit4=GOTOXMarker
+		.byte $90,$00
+        // Byte1bit0-7 = Colour 255 index
+        .byte $00,$ff
+
+		//GOTOX marker - Byte0bit4=GOTOXMarker
+		.byte $10,$00
+        // Byte0bit7 = FLIP
+        // Byte1bit0-7 = Colour 255 index
+        .byte $80,$ff
+
+		//GOTOX marker - byte0bit7=Transparent, Byte0bit4=GOTOXMarker
+		.byte $90,$00
+        // Byte0bit7 = FLIP
+        // Byte1bit0-7 = Colour 255 index
+        .byte $80,$ff
+
+        // End of Line, place a GOTOX marker at SCREEN_WIDTH
+		//GOTOX marker - Byte0bit4=GOTOXMarker
+		.byte $10+$00+altpal,altpal2	//%10101010
 	}
 }
 
