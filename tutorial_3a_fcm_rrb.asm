@@ -47,7 +47,7 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2)) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2) + (2)
+.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2)) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2)
 .const LOGICAL_NUM_ROWS = NUM_ROWS * NUM_SCREENS_HIGH
 
 .print "NUM_CHARS = " + LOGICAL_ROW_SIZE / 2
@@ -247,6 +247,8 @@ SCREEN_BASE:
         // End of Line, place a GOTOX marker at SCREEN_WIDTH
 		//GOTOX position
 		.byte <SCREEN_WIDTH,>SCREEN_WIDTH
+        //Char index
+        .byte <aroffs,>aroffs
 	}
 }
 
@@ -300,6 +302,7 @@ COLOR_BASE:
         // End of Line, place a GOTOX marker at SCREEN_WIDTH
 		//GOTOX marker - Byte0bit4=GOTOXMarker
 		.byte $10+$00+altpal,altpal2	//%10101010
+        .byte $80,$ff
 	}
 }
 
