@@ -2,6 +2,7 @@ KICK=/Users/colinreed/Applications/KickAss/KickAss65CE02-5.24f.jar
 APPNAME=tutorial_3a_fcm_rrb
 C1541=/opt/homebrew/Cellar/vice/3.7.1/bin/c1541
 XEMU=/Applications/Xemu/xmega65.app/Contents/MacOS/xmega65
+XEMUB=~/Documents/GitHub/RetroCogs/xemu/build/bin/xmega65.native
 PNG65=node ./build/aseparse65/png65.js
 LDTK65=node ./build/ldtk65/ldtk65.js
 MEGA65_FTP=~/Applications/Mega65/mega65_ftp.osx
@@ -22,6 +23,9 @@ code:
 
 run: all
 	$(XEMU) -prg $(APPNAME).prg -uartmon :4510 -videostd 0
+
+runb: all
+	$(XEMUB) -prg $(APPNAME).prg -uartmon :4510 -videostd 0
 
 push: all
 	$(MEGA65_FTP) -F -l $(JTAG) -c "put $(DISKNAME)" -c "quit"
