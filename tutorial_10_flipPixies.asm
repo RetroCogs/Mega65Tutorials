@@ -24,7 +24,7 @@
 .segmentdef MappedPixieWorkRam [start=$4000, max=$7fff, virtual]
 
 .segmentdef ScreenRam [start=$50000, virtual]
-.segmentdef PixieWorkRam [start=$54000, virtual]
+.segmentdef PixieWorkRam [start=$58000, virtual]
 
 .cpu _45gs02				
 
@@ -393,8 +393,8 @@ AddObj:
 
 	.var gotoXmask = Tmp2			// 8bit
 
-	_set16im(PixieWorkTiles, tilePtr)
-	_set16im(PixieWorkAttrib, attribPtr)
+	_set16im(MappedPixieWorkTiles, tilePtr)
+	_set16im(MappedPixieWorkAttrib, attribPtr)
 
 	_set16(ObjChar, charIndx)			// Start charIndx with first pixie char
 

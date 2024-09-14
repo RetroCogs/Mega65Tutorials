@@ -24,7 +24,7 @@
 .segmentdef MappedPixieWorkRam [start=$4000, max=$7fff, virtual]
 
 .segmentdef ScreenRam [start=$50000, virtual]
-.segmentdef PixieWorkRam [start=$54000, virtual]
+.segmentdef PixieWorkRam [start=$58000, virtual]
 
 .cpu _45gs02				
 
@@ -749,8 +749,8 @@ ClearWorkPixies: {
 	.var rowScreenPtr = Tmp		// 16bit
 	.var rowAttribPtr = Tmp+2	// 16bit
 
-	_set16im(PixieWorkTiles, rowScreenPtr)
-	_set16im(PixieWorkAttrib, rowAttribPtr)
+	_set16im(MappedPixieWorkTiles, rowScreenPtr)
+	_set16im(MappedPixieWorkAttrib, rowAttribPtr)
 
 	// Clear the RRBIndex list
 	ldx #0
