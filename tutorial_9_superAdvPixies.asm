@@ -21,8 +21,6 @@
 .segmentdef Data [start=$4000, max=$cfff]
 .segmentdef BSS [start=$e000, max=$f400, virtual]
 
-.segmentdef MappedPixieWorkRam [start=$4000, max=$7fff, virtual]
-
 .segmentdef ScreenRam [start=$50000, virtual]
 .segmentdef PixieWorkRam [start=$58000, virtual]
 
@@ -222,12 +220,6 @@ mainloop:
 	lda #$00
 	sta ObjPosY+1
 
-    // Map PixieWorkRam (at $54000) into MappedPixieWorkRam (at $4000)
-    mapLo(PixieWorkTiles, MappedPixieWorkTiles, $0c)
-    mapHi(PixieWorkTiles+$4000, MappedPixieWorkTiles+$4000, $03)
-	map
-	eom
-
 	_set16im((Sprites/64), ObjChar)			// Start charIndx with first pixie char
 
 	// Add Objs into the work ram here
@@ -301,8 +293,6 @@ mainloop:
 	inx
 	cpx #NUM_OBJS2
 	bne !-
-
-    unmapMemory()
 
 	lda #$00
 	sta $d020
@@ -408,15 +398,17 @@ yMaskTable:		.byte %11111111,%11111110,%11111100,%11111000,%11110000,%11100000,%
 
 AddObj:
 {
-	.var tilePtr = Tmp				// 16bit
-	.var attribPtr = Tmp+2			// 16bit
+	.var tilePtr = Tmp					// 32bit
+	.var attribPtr = Tmp1				// 32bit
 
-	.var charIndx = Tmp1+0			// 16bit
-	.var yShift = Tmp1+2			// 8bit
-
-	.var gotoXmask = Tmp2			// 8bit
+	.var charIndx = Tmp2+0				// 16bit
+	.var yShift = Tmp2+2				// 8bit
+	.var gotoXmask = Tmp2+3				// 8bit
 
 	_set16(ObjChar, charIndx)			// Start charIndx with first pixie char
+
+	_set32im(PixieWorkTiles, tilePtr)	// Set base full 32 bit pointers
+	_set32im(PixieWorkAttrib, attribPtr)
 
 	lda ObjPosY+0						// Find sub row y offset (0 - 7)
 	and #$07
@@ -468,28 +460,28 @@ AddObj:
 	// GOTOX
 	ldz #$00
 	lda ObjPosX+0						// tile = <xpos,>xpos | yShift
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz
 	lda ObjPosX+1
 	and #$03
 	ora yShift
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda gotoXmask
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz
 
 	// Char
 	lda charIndx+0
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$08
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz	
 	lda charIndx+1
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$1f
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 
 middleRow:
 	// Advance to next row and charIndx
@@ -525,28 +517,28 @@ middleRow:
 	// GOTOX
 	ldz #$00
 	lda ObjPosX+0						// tile = <xpos,>xpos | yShift
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$90							// attrib = $98 (transparent+gotox), $00
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz
 	lda ObjPosX+1
 	and #$03
 	ora yShift
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$ff
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz
 
 	// Char
 	lda charIndx+0
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$08
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz	
 	lda charIndx+1
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$1f
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 
 bottomRow:
 	// If we have a yShift of 0 we only need to add to 2 rows, skip the last row!
@@ -591,28 +583,28 @@ bottomRow:
 	// GOTOX
 	ldz #$00
 	lda ObjPosX+0						// tile = <xpos,>xpos | yShift	
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$98							// attrib = $98 (transparent+gotox+rowmask), gotoXmask
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz
 	lda ObjPosX+1
 	and #$03
 	ora yShift
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda gotoXmask
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz
 
 	// Char
 	lda charIndx+0
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$08
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 	inz	
 	lda charIndx+1
-	sta (tilePtr),z
+	sta ((tilePtr)),z
 	lda #$1f
-	sta (attribPtr),z
+	sta ((attribPtr)),z
 
 done:
 
@@ -749,8 +741,8 @@ ClearWorkPixies: {
 	.var rowScreenPtr = Tmp		// 16bit
 	.var rowAttribPtr = Tmp+2	// 16bit
 
-	_set16im(MappedPixieWorkTiles, rowScreenPtr)
-	_set16im(MappedPixieWorkAttrib, rowAttribPtr)
+	_set16im(PixieWorkTiles, rowScreenPtr)
+	_set16im(PixieWorkAttrib, rowAttribPtr)
 
 	// Clear the RRBIndex list
 	ldx #0
@@ -1372,14 +1364,7 @@ ScreenRam:
 	.fill (LOGICAL_ROW_SIZE * NUM_ROWS), $00
 
 // ------------------------------------------------------------
-//
-.segment MappedPixieWorkRam "Mapped Pixie Work RAM"
-MappedPixieWorkTiles:
-	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
-MappedPixieWorkAttrib:
-	.fill (LOGICAL_PIXIE_SIZE * NUM_ROWS), $00
-
-// ------------------------------------------------------------
+// Ensure these tables DONOT straddle a bank address
 //
 .segment PixieWorkRam "Pixie Work RAM"
 PixieWorkTiles:
