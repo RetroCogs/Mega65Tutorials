@@ -61,8 +61,15 @@
         tsb $d031
         lda #$40    		//Set bit6=DBLRR
         tsb $d051
-        lda #$00    		//Set CHRYSCL = 0
+        lda #$00   		    //Set CHRYSCL = 0
         sta $d05b
+
+        // lda #$08			//Set bit3=V400
+        // trb $d031
+        // lda #$40    		//Set bit6=DBLRR
+        // trb $d051
+        // lda #$01    		//Set CHRYSCL = 0
+        // sta $d05b
 
         // Init H320 flag
         lda #$80			
@@ -75,6 +82,9 @@
         // Enable Super Extended Attributes and mono chars < $ff
         lda #%00000101		//Set bit2=FCM for chars >$ff,  bit0=16 bit char indices (SEAM)
         tsb $d054
+
+        lda #$08
+        trb $d054
 
         rts
     }
@@ -113,7 +123,7 @@
         .var charYPos = Tmp1				// 16bit
 
         // The half height of the screen in rasterlines is (charHeight / 2) * 2
-        _set16im(((NUM_ROWS * 8) * VPIXELSCALE)/2, halfCharHeight)
+        _set16im((SCREEN_HEIGHT * VPIXELSCALE)/2, halfCharHeight)
 
         // Figure out the vertical center of the screen
 
@@ -139,10 +149,17 @@
         lda $d60f
         and #%00100000
         beq !+
-        _add16im(TopBorder, 1, TopBorder)
-        _add16im(BotBorder, 1, BotBorder)
-        _sub16im(charYPos, 2, charYPos)
+
+        _add16im(TopBorder, 0, TopBorder)
+        _add16im(BotBorder, 0, BotBorder)
+
+        _sub16im(charYPos, 0, charYPos)
+        _sub16im(BotBorder, 0, BotBorder)
+
     !:
+
+        _sub16im(TopBorder, 8, TopBorder)
+        _add16im(BotBorder, 8, BotBorder)
 
         // Set these values on the hardware
         // TBDRPOS - Top Border

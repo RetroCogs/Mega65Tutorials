@@ -660,7 +660,6 @@ UpdateLayerPositions:
 	// Parallax layer 1 (layers 0 & 1)
 	lda ScrollY1
 	and #$07
-	sta YShift+0
 	tax
 	lda shiftMasks,x
 	sta LayerMasks+0
@@ -674,7 +673,6 @@ UpdateLayerPositions:
 	// Parallax layer 2 (layers 2 & 3)
 	lda ScrollY2
 	and #$07
-	sta YShift+2
 	tax
 	lda shiftMasks,x
 	sta LayerMasks+2
@@ -793,11 +791,6 @@ Job:
 // data from the Map into the screen, this is done as a DMA for each row,
 // one for tiles and one for attribs.
 //
-colTabL: 
-	.fill 32, <(MAP_LOGICAL_SIZE * i)
-colTabH: 
-	.fill 32, >(MAP_LOGICAL_SIZE * i)
-
 UpdateLayerData: {
 	.var src_tile_ptr = Tmp			// 32bit
 	.var src_attrib_ptr = Tmp1		// 32bit
@@ -810,28 +803,47 @@ UpdateLayerData: {
 
 	.var scrollY = Tmp4				// 16bit
 
+	OffsetTilePtr: {
+		// Calculate which row data to add this character to, we
+		// are using the MUL hardware here to avoid having a row table.
+		// 
+		// This translates to $d778-A = (ScrollY1>>3) * MAP_LOGICAL_SIZE
+		//
+		lda $d771
+		lsr
+		ror $d770
+		lsr
+		ror $d770
+		lsr
+		ror $d770
+		sta $d771
+
+		lda #$00
+		sta $d772
+		sta $d776
+
+		lda #<MAP_LOGICAL_SIZE
+		sta src_stride+0
+		sta $d774
+		lda #>MAP_LOGICAL_SIZE
+		sta src_stride+1
+		sta $d775
+
+		_add16(src_tile_ptr, $d778, src_tile_ptr)		// Add this offset to tile ptrs
+
+		rts
+	}
+
 	UpdateLayer1: {
 		_set32im(MapRam, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
-		_set16im(MAP_LOGICAL_SIZE, src_stride)
+		lda ScrollY1+0				// Add ScrollY1 >> 3 to src_tile_ptr
+		sta $d770
+		lda ScrollY1+1
+		sta $d771
 
-		_set16(ScrollY1, scrollY)
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-
-		ldx scrollY+0
-		clc
-		lda src_tile_ptr+0
-		adc colTabL,x
-		sta src_tile_ptr+0
-		lda src_tile_ptr+1
-		adc colTabH,x
-		sta src_tile_ptr+1
+		jsr OffsetTilePtr
 
 		// Source offset is (ScrollX1 >> 4) << 1
 		_set16(ScrollX1, src_offset)
@@ -860,24 +872,12 @@ UpdateLayerData: {
 		_set32im(MapRam + MAP_LOGICAL_SIZE, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
-		_set16im(MAP_LOGICAL_SIZE, src_stride)
+		lda ScrollY1+0				// Add ScrollY1 >> 3 to src_tile_ptr
+		sta $d770
+		lda ScrollY1+1
+		sta $d771
 
-		_set16(ScrollY1, scrollY)
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-
-		ldx scrollY+0
-		clc
-		lda src_tile_ptr+0
-		adc colTabL,x
-		sta src_tile_ptr+0
-		lda src_tile_ptr+1
-		adc colTabH,x
-		sta src_tile_ptr+1
+		jsr OffsetTilePtr
 
 		// Source offset is (ScrollX1 >> 4) << 1
 		_set16(ScrollX1, src_offset)
@@ -906,24 +906,12 @@ UpdateLayerData: {
 		_set32im(MapRam3, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
-		_set16im(MAP_LOGICAL_SIZE, src_stride)
+		lda ScrollY2+0				// Add ScrollY2 >> 3 to src_tile_ptr
+		sta $d770
+		lda ScrollY2+1
+		sta $d771
 
-		_set16(ScrollY2, scrollY)
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-
-		ldx scrollY+0
-		clc
-		lda src_tile_ptr+0
-		adc colTabL,x
-		sta src_tile_ptr+0
-		lda src_tile_ptr+1
-		adc colTabH,x
-		sta src_tile_ptr+1
+		jsr OffsetTilePtr
 
 		// Source offset is (ScrollX2 >> 4) << 1
 		_set16(ScrollX2, src_offset)
@@ -952,23 +940,12 @@ UpdateLayerData: {
 		_set32im(MapRam3 + MAP_LOGICAL_SIZE, src_tile_ptr)
 		_set32im(AttribRam, src_attrib_ptr)
 
-		_set16im(MAP_LOGICAL_SIZE, src_stride)
+		lda ScrollY2+0				// Add ScrollY2 >> 3 to src_tile_ptr
+		sta $d770
+		lda ScrollY2+1
+		sta $d771
 
-		_set16(ScrollY2, scrollY)
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-		lsr scrollY+1
-		ror scrollY+0
-		ldx scrollY+0
-		clc
-		lda src_tile_ptr+0
-		adc colTabL,x
-		sta src_tile_ptr+0
-		lda src_tile_ptr+1
-		adc colTabH,x
-		sta src_tile_ptr+1
+		jsr OffsetTilePtr
 
 		// Source offset is (ScrollX2 >> 4) << 1
 		_set16(ScrollX2, src_offset)

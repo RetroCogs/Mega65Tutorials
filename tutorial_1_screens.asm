@@ -12,18 +12,20 @@
 // Defines to describe the screen size
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
-//#define H320
-.const SCREEN_WIDTH = 640
+#define H320
+.const SCREEN_WIDTH = 320
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240, otherwise <= 480
-#define V200
-.const SCREEN_HEIGHT = 240
+//#define V200
+.const SCREEN_HEIGHT = 224*2
 
 // Choose IS_NTSC if you are running in NTSC 60hz mode
 //#define IS_NTSC
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"
+
+.print "TOP_BORDER = " + TOP_BORDER
 
 // Figure out how many characters wide and high the visible area is
 //
@@ -129,11 +131,11 @@ Entry: {
 	tsb $d04d
 
 	// TEXTYPOS - Text Y position - position of top most pixel
-	lda #<TOP_BORDER
+	lda #<TEXTYPOS
 	sta $d04e
 	lda #%00001111
 	trb $d04f
-	lda #(>TOP_BORDER) & %00001111
+	lda #(>TEXTYPOS) & %00001111
 	tsb $d04f
 
 	VIC4_SetNumCharacters(CHARS_WIDE)

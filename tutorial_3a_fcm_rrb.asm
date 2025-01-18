@@ -25,8 +25,8 @@
 // Defines to describe the screen size
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
-#define H320
-.const SCREEN_WIDTH = 320
+//#define H320
+.const SCREEN_WIDTH = 640
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
@@ -47,7 +47,7 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2)) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2)
+.const LOGICAL_ROW_SIZE = (2 + (CHARS_WIDE * 2)) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + 2) + (2 + (64 * 2))
 .const LOGICAL_NUM_ROWS = NUM_ROWS * NUM_SCREENS_HIGH
 
 .print "NUM_CHARS = " + LOGICAL_ROW_SIZE / 2
@@ -209,6 +209,7 @@ SCREEN_BASE:
     .var scrpos2 = SCREEN_WIDTH/2 - 8
     .var scrpos3 = SCREEN_WIDTH/2 + 8
     .var scrpos4 = SCREEN_WIDTH/2 + 20
+    .var scrpos5 = $240
 
 	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
 	{
@@ -217,7 +218,8 @@ SCREEN_BASE:
 
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
-			.var choffs = (Chars/64) + (((r&7)*8) + (c&7))
+			// .var choffs = (Chars/64) + (((r&7)*8) + (c&7))
+			.var choffs = (((r&7)*8) + (c&7))
 			//Char index
 			.byte <choffs,>choffs
 		}
@@ -225,24 +227,92 @@ SCREEN_BASE:
         .var aroffs = (Chars/64) + 64
 
 		//GOTOX position
-		.byte <scrpos,>scrpos
+		.byte <scrpos,(>scrpos)&3
         //Char index
         .byte <aroffs,>aroffs
 
 		//GOTOX position
-		.byte <scrpos2,>scrpos2
+		.byte <scrpos2,(>scrpos2)&3
         //Char index
         .byte <aroffs,>aroffs
 
 		//GOTOX position
-		.byte <scrpos3,>scrpos3
+		.byte <scrpos3,(>scrpos3)&3
         //Char index
         .byte <aroffs,>aroffs
 
 		//GOTOX position
-		.byte <scrpos4,>scrpos4
+		.byte <scrpos4,(>scrpos4)&3
         //Char index
         .byte <aroffs,>aroffs
+
+		//GOTOX position
+		.byte <scrpos5,(>scrpos5)&3
+        //Char index
+        .byte 'h', 00
+        .byte 'e', 00
+        .byte 'l', 00
+        .byte 'l', 00
+        .byte 'o', 00
+        .byte ' ', 00
+        .byte 'w', 00
+        .byte 'o', 00
+        .byte 'r', 00
+        .byte 'l', 00
+        .byte 'd', 00
+        .byte ' ', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'h', 00
+        .byte 'e', 00
+        .byte 'l', 00
+        .byte 'l', 00
+        .byte 'o', 00
+        .byte ' ', 00
+        .byte 'w', 00
+        .byte 'o', 00
+        .byte 'r', 00
+        .byte 'l', 00
+        .byte 'd', 00
+        .byte ' ', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'h', 00
+        .byte 'e', 00
+        .byte 'l', 00
+        .byte 'l', 00
+        .byte 'o', 00
+        .byte ' ', 00
+        .byte 'w', 00
+        .byte 'o', 00
+        .byte 'r', 00
+        .byte 'l', 00
+        .byte 'd', 00
+        .byte ' ', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'h', 00
+        .byte 'e', 00
+        .byte 'l', 00
+        .byte 'l', 00
+        .byte 'o', 00
+        .byte ' ', 00
+        .byte 'w', 00
+        .byte 'o', 00
+        .byte 'r', 00
+        .byte 'l', 00
+        .byte 'd', 00
+        .byte ' ', 00
+        .byte 'y', 00
+        .byte 'o', 00
+        .byte 'y', 00
+        .byte 'o', 00
 
         // End of Line, place a GOTOX marker at SCREEN_WIDTH
 		//GOTOX position
@@ -298,6 +368,74 @@ COLOR_BASE:
         // Byte0bit7 = FLIP
         // Byte1bit0-7 = Colour 255 index
         .byte $80,$ff
+
+		//GOTOX marker - byte0bit7=Transparent, Byte0bit4=GOTOXMarker
+		.byte $10,$00
+        // Byte1bit0-7 = Colour 255 index
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
+        .byte $00,$ff
 
         // End of Line, place a GOTOX marker at SCREEN_WIDTH
 		//GOTOX marker - Byte0bit4=GOTOXMarker

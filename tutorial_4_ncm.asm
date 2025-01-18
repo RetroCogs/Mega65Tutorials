@@ -80,7 +80,7 @@ Entry: {
 
 	VIC4_SetRowWidth(LOGICAL_ROW_SIZE)
 	VIC4_SetNumCharacters(LOGICAL_ROW_SIZE/2)
-	VIC4_SetNumRows(NUM_ROWS)
+	VIC4_SetNumRows(NUM_ROWS-1)
 
 	VIC4_SetScreenPtr(SCREEN_BASE)
 
@@ -88,8 +88,10 @@ Entry: {
 	jsr CopyColors
 
 	lda #$00
-	sta $d020
 	sta $d021
+
+	inc
+	sta $d020
 
 	// Main loop
 mainloop:
@@ -205,7 +207,7 @@ Palette:
 .segment Data "ScreenData"
 SCREEN_BASE:
 {
-	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
+	.for(var r = 0;r < LOGICAL_NUM_ROWS+1;r++) 
 	{
 		//GOTOX position
 		.byte $00,$00
@@ -224,7 +226,7 @@ SCREEN_BASE:
 .segment Data "ColorData"
 COLOR_BASE:
 {
-	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
+	.for(var r = 0;r < LOGICAL_NUM_ROWS+1;r++) 
 	{
 		.var altpal = $00
 		.if((r & 4) != 0)
