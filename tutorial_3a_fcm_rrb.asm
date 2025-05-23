@@ -372,14 +372,14 @@ COLOR_BASE:
 		//GOTOX marker - byte0bit7=Transparent, Byte0bit4=GOTOXMarker
 		.byte $10,$00
         // Byte1bit0-7 = Colour 255 index
-        .byte $00,$ff
-        .byte $00,$ff
-        .byte $00,$ff
-        .byte $00,$ff
-        .byte $00,$ff
-        .byte $00,$ff
-        .byte $00,$ff
-        .byte $00,$ff
+        .byte $00,$3f
+        .byte $00,$3f
+        .byte $00,$3f
+        .byte $00,$3f
+        .byte $00,$3f
+        .byte $00,$3f
+        .byte $00,$3f
+        .byte $00,$3f
         .byte $00,$ff
         .byte $00,$ff
         .byte $00,$ff

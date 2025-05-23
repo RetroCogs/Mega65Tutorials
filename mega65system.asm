@@ -158,8 +158,8 @@
 
     !:
 
-        _sub16im(TopBorder, 8, TopBorder)
-        _add16im(BotBorder, 8, BotBorder)
+        // _sub16im(TopBorder, 8, TopBorder)
+        // _add16im(BotBorder, 8, BotBorder)
 
         // Set these values on the hardware
         // TBDRPOS - Top Border

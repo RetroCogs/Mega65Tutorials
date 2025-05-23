@@ -25,8 +25,8 @@
 // Defines to describe the screen size
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
-#define H320
-.const SCREEN_WIDTH = 320
+//#define H320
+.const SCREEN_WIDTH = 640
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
