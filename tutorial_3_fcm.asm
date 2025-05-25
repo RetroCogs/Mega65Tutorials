@@ -26,11 +26,11 @@
 //
 // If you use H320 then SCREEN_WIDTH much be <= 360, otherwise <= 720
 //#define H320
-.const SCREEN_WIDTH = 640
+.const SCREEN_WIDTH = 320*2
 
 // If you use V200 then SCREEN_HEIGHT much be <= 240
-#define V200
-.const SCREEN_HEIGHT = 192
+//#define V200
+.const SCREEN_HEIGHT = 192*2
 
 // ------------------------------------------------------------
 #import "mega65macros.asm"

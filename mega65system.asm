@@ -52,25 +52,40 @@
         lda #$04			//Set bit2=PAL
         tsb $d030
 
+        // Init V200 flag
+        lda #$08
+    #if V200
+        trb $d031           //Clear bit3=V200
+
+        lda #$01    		//Set CHRYSCL = 1
+        sta $d05b
+    #else 
+        tsb $d031           //Set bit3=V400
+
+        lda #$00    		//Set CHRYSCL = 0
+        sta $d05b
+    #endif 
+
         // Enable RRB double buffer
-        lda #$80			//Clear bit7=NORRDEL
-        trb $d051
+        // lda #$80			//Clear bit7=NORRDEL
+        // trb $d051
 
         // Enable double line RRB to double the time for RRB operations 
-        lda #$08			//Set bit3=V400
-        tsb $d031
-        lda #$40    		//Set bit6=DBLRR
-        tsb $d051
-        lda #$00   		    //Set CHRYSCL = 0
-        sta $d05b
-
         // lda #$08			//Set bit3=V400
-        // trb $d031
+        // tsb $d031
         // lda #$40    		//Set bit6=DBLRR
-        // trb $d051
-        // lda #$01    		//Set CHRYSCL = 0
+        // tsb $d051
+        // lda #$00   		    //Set CHRYSCL = 0
         // sta $d05b
 
+        // lda #$08			//Set bit3=V400
+        // tsb $d031
+        // lda #$40    		//Set bit6=DBLRR
+        // trb $d051
+        // lda #$00    		//Set CHRYSCL = 0
+        // sta $d05b
+
+                    
         // Init H320 flag
         lda #$80			
     #if H320
@@ -150,8 +165,10 @@
         and #%00100000
         beq !+
 
-        _add16im(TopBorder, 0, TopBorder)
-        _add16im(BotBorder, 0, BotBorder)
+// V400 no RRBDEL 1,1 
+
+        _add16im(TopBorder, 1, TopBorder)
+        _add16im(BotBorder, 1, BotBorder)
 
         _sub16im(charYPos, 0, charYPos)
         _sub16im(BotBorder, 0, BotBorder)
