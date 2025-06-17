@@ -32,6 +32,9 @@
 #define H320
 .const SCREEN_WIDTH = 320
 
+// Enable Double RRB to get twice the number of RRB characters
+#define DOUBLERRB
+
 // If you use V200 then SCREEN_HEIGHT much be <= 240
 #define V200
 .const SCREEN_HEIGHT = 224
