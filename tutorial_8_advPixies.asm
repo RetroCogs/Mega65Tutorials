@@ -1354,21 +1354,6 @@ costable:
 
 // ------------------------------------------------------------
 //
-.segment Code "RRB Clear Data"
-ClearPixieTile:
-	.for(var c = 0;c < LOGICAL_PIXIE_SIZE/2;c++) 
-	{
-		.byte <SCREEN_WIDTH,>SCREEN_WIDTH
-	}
-
-ClearPixieAttrib:
-	.for(var c = 0;c < LOGICAL_PIXIE_SIZE/2;c++) 
-	{
-		.byte $90,$00
-	}
-
-// ------------------------------------------------------------
-//
 .segment Code "RRB EOL Data"
 EOLTile:
 	.byte <SCREEN_WIDTH,>SCREEN_WIDTH

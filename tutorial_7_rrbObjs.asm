@@ -1045,21 +1045,6 @@ costable:
 
 // ------------------------------------------------------------
 //
-.segment Data "RRB Clear Data"
-ClearObjChar:
-	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
-	{
-		.byte <SCREEN_WIDTH,>SCREEN_WIDTH
-	}
-
-ClearObjAttrib:
-	.for(var c = 0;c < LOGICAL_OBJS_SIZE/2;c++) 
-	{
-		.byte $90,$00
-	}
-
-// ------------------------------------------------------------
-//
 .segment Data "RRB EOL Data"
 EOLChar:
 	.byte <SCREEN_WIDTH,>SCREEN_WIDTH
