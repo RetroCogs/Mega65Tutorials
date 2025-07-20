@@ -52,40 +52,42 @@
         lda #$04			//Set bit2=PAL
         tsb $d030
 
-        // Init V200 flag
-        lda #$08
     #if V200
-        trb $d031           //Clear bit3=V200
-
-        lda #$01    		//Set CHRYSCL = 1
-        sta $d05b
+        // Init V200 flags
+        //
+        #if DOUBLERRB
+            // Enable RRB double buffer
+            //
+            lda #$08
+            tsb $d031           //Clear bit3=V200
+            lda #$00    		//Set CHRYSCL = 0
+            sta $d05b
+            lda #$80			//Clear bit7=NORRDEL
+            trb $d051
+            lda #$40    		//Set bit6=DBLRR
+            tsb $d051
+        #else
+            // Enable RRB double buffer
+            //
+            lda #$08
+            trb $d031           //Clear bit3=V200
+            lda #$01    		//Set CHRYSCL = 1
+            sta $d05b
+            lda #$80			//Set bit7=NORRDEL
+            tsb $d051
+            lda #$40    		//Clear bit6=DBLRR
+            trb $d051
+        #endif
     #else 
+        // Init V400 flags
+        //
+        lda #$08
         tsb $d031           //Set bit3=V400
 
         lda #$00    		//Set CHRYSCL = 0
         sta $d05b
-    #endif 
+    #endif
 
-        // Enable RRB double buffer
-        // lda #$80			//Clear bit7=NORRDEL
-        // trb $d051
-
-        // Enable double line RRB to double the time for RRB operations 
-        // lda #$08			//Set bit3=V400
-        // tsb $d031
-        // lda #$40    		//Set bit6=DBLRR
-        // tsb $d051
-        // lda #$00   		    //Set CHRYSCL = 0
-        // sta $d05b
-
-        // lda #$08			//Set bit3=V400
-        // tsb $d031
-        // lda #$40    		//Set bit6=DBLRR
-        // trb $d051
-        // lda #$00    		//Set CHRYSCL = 0
-        // sta $d05b
-
-                    
         // Init H320 flag
         lda #$80			
     #if H320
