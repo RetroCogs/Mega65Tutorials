@@ -578,26 +578,24 @@ ClearWorkObjs: {
 	bne !-
 
 	// Clear the RRB characters using DMA
-	RunDMAJob(Job)
+	RunDMAJob(JobFill)
 
 	rts 
-Job:
-	DMAHeader(ClearObjChar>>20, ObjWorkChars>>20)
+
+JobFill:
+	// We fill ONLY the attrib0 byte with a GOTOX + TRANS token, note the 2 byte step value
+	DMAHeader(0, ObjWorkAttrib>>20)
+	DMADestStep(2, 0)
 	.for(var r=0; r<NUM_ROWS; r++) {
-		// Tile
-		DMACopyJob(
-			ClearObjChar, 
-			ObjWorkChars + (r * LOGICAL_OBJS_SIZE),
-			LOGICAL_OBJS_SIZE,
-			true, false)
 		// Atrib
-		DMACopyJob(
-			ClearObjAttrib,
+		DMAFillJob(
+			$90,
 			ObjWorkAttrib + (r * LOGICAL_OBJS_SIZE),
-			LOGICAL_OBJS_SIZE,
-			(r!=(NUM_ROWS-1)), false)
+			LOGICAL_OBJS_SIZE / 2,
+			(r!=(NUM_ROWS-1)))
 	}
- .print ("RRBClear DMAjob = " + (* - Job))
+
+.print ("RRBClear DMAjob = " + (* - JobFill))
 }	
 
 

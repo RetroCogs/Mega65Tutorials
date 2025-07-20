@@ -761,27 +761,25 @@ ClearWorkPixies: {
 	cpx #NUM_ROWS
 	bne !-
 
-	// Clear the working pixie data using DMA
-	RunDMAJob(Job)
+	// Clear the RRB characters using DMA
+	RunDMAJob(JobFill)
 
 	rts 
-Job:
-	DMAHeader(ClearPixieTile>>20, PixieWorkTiles>>20)
+
+JobFill:
+	// We fill ONLY the attrib0 byte with a GOTOX + TRANS token, note the 2 byte step value
+	DMAHeader(0, PixieWorkAttrib>>20)
+	DMADestStep(2, 0)
 	.for(var r=0; r<NUM_ROWS; r++) {
-		// Tile
-		DMACopyJob(
-			ClearPixieTile, 
-			PixieWorkTiles + (r * LOGICAL_PIXIE_SIZE),
-			LOGICAL_PIXIE_SIZE,
-			true, false)
 		// Atrib
-		DMACopyJob(
-			ClearPixieAttrib,
+		DMAFillJob(
+			$90,
 			PixieWorkAttrib + (r * LOGICAL_PIXIE_SIZE),
-			LOGICAL_PIXIE_SIZE,
-			(r!=(NUM_ROWS-1)), false)
+			LOGICAL_PIXIE_SIZE / 2,
+			(r!=(NUM_ROWS-1)))
 	}
- .print ("RRBClear DMAjob = " + (* - Job))
+
+.print ("RRBClear DMAjob = " + (* - JobFill))
 }	
 
 
