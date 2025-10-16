@@ -62,6 +62,8 @@
 
 .const LOGICAL_PIXIE_SIZE = 2 * (NUM_PIXIEWORDS)
 
+.const ALT_SELECT_SIZE = 2
+
 // LOGICAL_EOL_SIZE is the end of line marker, this consists of a GOTOX(SCREEN_WIDTH) + CHAR
 // this end of line set are needed to ensure that all of the line is visible as the RRB
 // system will only draw up to the position of the last character.
@@ -69,8 +71,10 @@
 
 // LOGICAL_ROW_SIZE is the number of bytes the VIC-IV advances each row
 //
-.const LOGICAL_ROW_SIZE = (LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_PIXIE_SIZE + LOGICAL_EOL_SIZE
+.const LOGICAL_ROW_SIZE = ALT_SELECT_SIZE + (LOGICAL_LAYER_SIZE * NUM_LAYERS) + ALT_SELECT_SIZE + LOGICAL_PIXIE_SIZE + LOGICAL_EOL_SIZE
 .const LOGICAL_NUM_ROWS = NUM_ROWS
+
+.const LOGICAL_PIXIE_OFFSET = ALT_SELECT_SIZE + (LOGICAL_LAYER_SIZE * NUM_LAYERS) + ALT_SELECT_SIZE
 
 .print ("LOGICAL_ROW_SIZE = " + LOGICAL_ROW_SIZE)
 
@@ -85,8 +89,8 @@
 
 // ------------------------------------------------------------
 //
-.const NUM_OBJS1 = 256
-.const NUM_OBJS2 = 256
+.const NUM_OBJS1 = 128
+.const NUM_OBJS2 = 128
 
 // ------------------------------------------------------------
 //
@@ -157,6 +161,10 @@ Entry: {
 
 	jsr InitObjData
 
+	lda $d63e
+	ora #$01
+	sta $d63e
+
 	// Main loop
 mainloop:
 	// Wait for (H400) rasterline $07
@@ -170,8 +178,8 @@ mainloop:
 !:	cmp $d052 
     beq !-
 
-	lda #$04
-    sta $d020
+	// lda #$04
+    // sta $d020
 
 	// Layer1 : Calculate how much to shift the layer row off the left size	
 	ldx #$00
@@ -201,8 +209,8 @@ mainloop:
 	// Update Pixie data using DMA
 	jsr UpdateLayerData.UpdateLayerPixies
 
-	lda #$08
-    sta $d020
+	// lda #$08
+    // sta $d020
 
 	inc FrameCount
 
@@ -482,7 +490,7 @@ AddObj:
 	inz	
 	lda charIndx+1
 	sta ((tilePtr)),z
-	lda #$1f
+	lda #$0f
 	sta ((attribPtr)),z
 
 middleRow:
@@ -520,7 +528,7 @@ middleRow:
 	ldz #$00
 	lda ObjPosX+0						// tile = <xpos,>xpos | yShift
 	sta ((tilePtr)),z
-	lda #$90							// attrib = $98 (transparent+gotox), $00
+	lda #$98							// attrib = $98 (transparent+gotox+rowmask), $00
 	sta ((attribPtr)),z
 	inz
 	lda ObjPosX+1
@@ -539,7 +547,7 @@ middleRow:
 	inz	
 	lda charIndx+1
 	sta ((tilePtr)),z
-	lda #$1f
+	lda #$0f
 	sta ((attribPtr)),z
 
 bottomRow:
@@ -605,7 +613,7 @@ bottomRow:
 	inz	
 	lda charIndx+1
 	sta ((tilePtr)),z
-	lda #$1f
+	lda #$0f
 	sta ((attribPtr)),z
 
 done:
@@ -653,8 +661,8 @@ UpdateLayerPositions:
 	.var gotoXmarker = Tmp4			// 8bit
 
 	// Start layerPtr at top left GOTOX token
-	_set32im(ScreenRam, tileLayerPtr)
-	_set32im(COLOR_RAM, attribLayerPtr)
+	_set32im(ScreenRam + ALT_SELECT_SIZE, tileLayerPtr)
+	_set32im(COLOR_RAM + ALT_SELECT_SIZE, attribLayerPtr)
 
 	// set GotoX info
 	lda #$18
@@ -699,8 +707,10 @@ layerLoop:
 	ldy #$00
 
 rowLoop:
+	
+	// GOTOX with rowmask for scrolling layer
+	ldz #0
 
-	ldz #$00
 	lda ShiftOffsetsL,x		// Update Byte0 of layer row
 	sta ((tileRowPtr)),z
 	lda gotoXmarker
@@ -731,6 +741,52 @@ rowLoop:
 	inx
 	cpx #NUM_LAYERS
 	lbne layerLoop
+
+
+	// Start layerPtr at top left GOTOX token
+	_set32im(ScreenRam, tileRowPtr)
+	_set32im(COLOR_RAM, attribRowPtr)
+
+	// Update GOTOX position for each row in this layer
+	ldy #$00
+
+rowLoop2:
+
+	// GOTOX with NO rowmask to select ALT palette for Scrolling
+	//
+	ldz #$00
+
+	lda #$00				// XPOSLo
+	sta ((tileRowPtr)),z
+	lda #$10				// GotoXmarker
+	sta ((attribRowPtr)),z
+	inz
+	lda #$00
+	sta ((tileRowPtr)),z
+	lda #$00				// (Standard palette selection)
+	sta ((attribRowPtr)),z
+
+	// GOTOX with NO rowmask to select ALT palette for Pixies
+	//
+	ldz #ALT_SELECT_SIZE + (LOGICAL_LAYER_SIZE * NUM_LAYERS)
+
+	lda #$00				// XPOSLo
+	sta ((tileRowPtr)),z
+	lda #$10				// GotoXmarker
+	sta ((attribRowPtr)),z
+	inz
+	lda #$00
+	sta ((tileRowPtr)),z
+	lda #$60				// BOLD + REVERSE (Alternate palette selection)
+	sta ((attribRowPtr)),z
+
+	// Advance row pointers to the next logical row
+	_add32im(tileRowPtr, LOGICAL_ROW_SIZE, tileRowPtr)
+	_add32im(attribRowPtr, LOGICAL_ROW_SIZE, attribRowPtr)
+	
+	iny	
+	cpy #LOGICAL_NUM_ROWS
+	bne rowLoop2
 
 	rts
 }
@@ -778,7 +834,7 @@ JobFill:
 		DMAFillJob(
 			$90,
 			PixieWorkAttrib + (r * LOGICAL_PIXIE_SIZE),
-			LOGICAL_PIXIE_SIZE / 2,
+			(LOGICAL_PIXIE_SIZE / 2),
 			(r!=(NUM_ROWS-1)))
 	}
 
@@ -860,7 +916,7 @@ UpdateLayerData: {
 		sta src_offset+0
 
 		// Copy into tile after GOTOX
-		_set16im(2, dst_offset)
+		_set16im(ALT_SELECT_SIZE + 2, dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
 
@@ -894,7 +950,7 @@ UpdateLayerData: {
 		sta src_offset+0
 
 		// Copy into tile after GOTOX on the second layer
-		_set16im(2 + LOGICAL_LAYER_SIZE, dst_offset)
+		_set16im(ALT_SELECT_SIZE + 2 + LOGICAL_LAYER_SIZE, dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
 
@@ -928,7 +984,7 @@ UpdateLayerData: {
 		sta src_offset+0
 
 		// Copy into tile after GOTOX on the second layer
-		_set16im(2 + (LOGICAL_LAYER_SIZE * 2), dst_offset)
+		_set16im(ALT_SELECT_SIZE + 2 + (LOGICAL_LAYER_SIZE * 2), dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
 
@@ -962,7 +1018,7 @@ UpdateLayerData: {
 		sta src_offset+0
 
 		// Copy into tile after GOTOX on the second layer
-		_set16im(2 + (LOGICAL_LAYER_SIZE * 3), dst_offset)
+		_set16im(ALT_SELECT_SIZE + 2 + (LOGICAL_LAYER_SIZE * 3), dst_offset)
 
 		_set16im(CHARS_WIDE * 2, copy_length)
 
@@ -980,7 +1036,7 @@ UpdateLayerData: {
 		_set16im(0, src_offset)
 
 		// Copy into Pixie layer
-		_set16im(LOGICAL_LAYER_SIZE * NUM_LAYERS, dst_offset)
+		_set16im(LOGICAL_PIXIE_OFFSET, dst_offset)
 
 		_set16im(LOGICAL_PIXIE_SIZE, copy_length)
 
@@ -999,7 +1055,7 @@ UpdateLayerData: {
 		_set16im(0, src_offset)
 
 		// Copy into EOL layer
-		_set16im((LOGICAL_LAYER_SIZE * NUM_LAYERS) + LOGICAL_PIXIE_SIZE, dst_offset)
+		_set16im(ALT_SELECT_SIZE + (LOGICAL_LAYER_SIZE * NUM_LAYERS) + ALT_SELECT_SIZE + LOGICAL_PIXIE_SIZE, dst_offset)
 
 		_set16im(LOGICAL_EOL_SIZE, copy_length)
 
@@ -1164,12 +1220,28 @@ InitPalette: {
 		lda Palette + $020,x 
 		sta $d300,x
 
+		inx 
+		cpx #$10
+		bne !-
+
+		// Ensure index 0 is black
+		lda #$00
+		sta $d100
+		sta $d200
+		sta $d300
+
+		//Bit pairs = CurrPalette, TextPalette, SpritePalette, AltPalette
+		lda #%01000001 //Edit=%00, Text = %00, Sprite = %00, Alt = %01
+		sta $d070 
+
+		ldx #$00
+	!:
 		lda Palette + $030,x 	// sprite
-		sta $d110,x
+		sta $d100,x
 		lda Palette + $040,x 
-		sta $d210,x
+		sta $d200,x
 		lda Palette + $050,x 
-		sta $d310,x
+		sta $d300,x
 
 		inx 
 		cpx #$10
