@@ -55,7 +55,7 @@
 	XCourse:		.word $0000
 	YCourse:		.word $0000
 
-	Tmp:			.byte $00
+	Tmp:			.byte $00,$00,$00,$00
 
 // ------------------------------------------------------------
 //
@@ -171,6 +171,36 @@ Entry: {
 	lda #>(SCREEN_BASE + (80*10))
 	sta HexPtr+1
 
+	_set32im($8000000, Tmp)
+	ldz #$00
+
+	lda #$fc
+	sta ((Tmp)),z
+	inz
+	lda #$fd
+	sta ((Tmp)),z
+	inz
+	lda #$fe
+	sta ((Tmp)),z
+	inz
+	lda #$ff
+	sta ((Tmp)),z
+	inz
+
+	ldz #$00
+	lda ((Tmp)),z
+	inz
+	jsr AddHexOutput
+	lda ((Tmp)),z
+	inz
+	jsr AddHexOutput
+	lda ((Tmp)),z
+	inz
+	jsr AddHexOutput
+	lda ((Tmp)),z
+	inz
+	jsr AddHexOutput
+
 	ldy #$00
 
 keyloop:
@@ -178,26 +208,7 @@ keyloop:
 	beq keyloop
 	sta $d610
 
-	pha	
-	// draw upper nibble
-	lsr
-	lsr
-	lsr
-	lsr
-	tax
-	lda HexTable,x
-	sta (HexPtr),y
-	inw HexPtr
-	pla
-
-	pha
-	// draw lower nibble
-	and #$0f
-	tax
-	lda HexTable,x
-	sta (HexPtr),y
-	inw HexPtr
-	pla
+	jsr AddHexOutput
 
 	cmp #$14
 	bne nodel
@@ -238,6 +249,31 @@ mainloop:
 
 	jmp mainloop
 
+}
+
+AddHexOutput: {
+	pha	
+	// draw upper nibble
+	lsr
+	lsr
+	lsr
+	lsr
+	tax
+	lda HexTable,x
+	sta (HexPtr),y
+	inw HexPtr
+	pla
+
+	pha
+	// draw lower nibble
+	and #$0f
+	tax
+	lda HexTable,x
+	sta (HexPtr),y
+	inw HexPtr
+	pla
+
+	rts
 }
 
 // ------------------------------------------------------------

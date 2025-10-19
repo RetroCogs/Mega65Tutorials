@@ -85,7 +85,7 @@
         tsb $d031           //Set bit3=V400
 
         lda #$00    		//Set CHRYSCL = 0
-        sta $d05b
+        sta $d05b    
     #endif
 
         // Init H320 flag
@@ -94,6 +94,10 @@
         trb $d031			//Clear bit7=H640
     #else
         tsb $d031			//Set bit7=H640
+
+            lda #$80			//Clear bit7=NORRDEL
+            trb $d051
+
     #endif
 
         // Enable Super Extended Attributes and mono chars < $ff
