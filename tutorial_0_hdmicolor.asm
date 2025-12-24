@@ -107,6 +107,16 @@ mainloop:
 
 	inc FrameCount
 
+	lda FrameCount
+	and #$7f
+	bne skip
+
+	lda $d63e
+	eor #$01
+	sta $d63e
+
+skip:
+
     dec $d020
 
 	jmp mainloop
@@ -230,6 +240,7 @@ SCREEN_BASE:
 COLOR_BASE:
 {
 	.var col = 0
+	.var step = 4
 	.for(var r = 0;r < LOGICAL_NUM_ROWS;r++) 
 	{
 		//GOTOX marker - Byte0bit4=GOTOXMarker
@@ -237,18 +248,20 @@ COLOR_BASE:
 
 		.if(r>=(LOGICAL_NUM_ROWS/2))
 		{
-			.eval col = 256-80
+			.eval col = 255-(39*4)
+			.eval step = 4
 		}
 		else
 		{
 			.eval col = 0
+			.eval step = 4
 		}
 		
 		.for(var c = 0;c < CHARS_WIDE;c++) 
 		{
 			// Byte1bit0-7 = Colour 255 index
 			.byte $00,col
-			.eval col = col + 2
+			.eval col = col + step
 		}
 	}
 }
